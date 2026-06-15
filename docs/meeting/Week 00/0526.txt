@@ -1,0 +1,667 @@
+[Speaker 1]
+Months and months and months ago. I told you at the time. It's all fine. It's all good, but we discuss exactly what you were going to do closer to the time when we knew where we were as a group, what data we had things have changed in the last few months.
+
+[Speaker 2]
+So I didn't want you to get stuck doing a project which I dreamed up six months ago.
+
+[Speaker 1]
+When it doesn't make any sense anymore. So, the point of today really is for PhD students who you know from Labs, I hope, perhaps.
+
+[Speaker 2]
+Um, will give you a really quick chop through their work, explain what they're doing, and in particular what kind of data they've got. And then, based on that, you were going to tell us.
+
+[Speaker 1]
+What type of project you want broadly, like, mainly software? Absolutely. No software. I want to do deep learning so you can do deep learning. You can do some mixture. You can just write a piece of software just. Um, so there's a whole spectrum of different things that you might want to do, right?
+
+And um? I'm hoping it'd be painful, maybe, but I'm hoping in an hour or two's time. We are clearer about what you want to do and why it's important to us. I don't want you doing a project which isn't important to us and what you're doing. A project on real data, and if it works, I want it to be a real use to to our group.
+
+There's no point of doing a project and throwing it at the end, and I want you to have been doing something you can feel proud of, and you know, it's going to be used. Any questions? I'm clear, happy. Yeah, good.
+
+[Speaker 2]
+Should we start with framing? Do you want this first kick kick off? We're gonna know how best to do this? Do you want to, um, where's best to show the screen? Do you think up here maybe still might see because there's a chance I've seen it before?
+
+So, I'm gonna show you the data first. It's like, pop the screen up a bit, cuz. I'll tilt the screen a bit.
+
+[Speaker 1]
+And so what I'm doing is the capital Behavior recognition, so I will. This is the original videos that will crop the calls from the original videos and then.
+
+[Speaker 3]
+Gave this short clip short clips into a deep learning model to recognize the behaviors. So, how we get the the ground, choose data? We will use the potential models like some three tutorial detection job. They say it's a video I have pre-processed by some three, so you can say this is the button boxes.
+
+[Speaker 4]
+What's the, uh, the call? It's actually.
+
+[Speaker 3]
+Um, tactically, around the cuddles, and then the numbers is the idea. It's the fake ideas of the curves, and then I will crop these
+
+[Speaker 4]
+Curves from these videos, which show you.
+
+[Speaker 2]
+So, these
+
+[Speaker 4]
+Are the. 10 second Clips. I will put it into the deep learning models. And basically the classification model and do the recognition stuff. Um.
+
+[Speaker 1]
+And all this data is created by the bounding boxes come out of sound three. Yeah, and also the ending and the ID comes out of sum three and the behavior. Comes out of the application. Yeah, good. A video classification model. I'm gonna shoot you part of the results of what I have done.
+
+[Speaker 2]
+So, basically, I'm focusing on the individual behaviors like. Self grooming. If you guys are going to be examples?
+
+Yeah.
+
+So, this is. I'll put of the.
+
+[Speaker 4]
+Sum 3 and also the classification model, so we will have the location of the cost, the ID of the thick height of the curves, and then the behavior label of the curse. So this is the final results, so
+
+[Speaker 1]
+That is sure I'm a bit hard to see the screen. So that is showing the in in the light blue text, it's hard to see on this. But in the light blue text, it's telling you what the car is doing with standing it's grooming itself relating. Yeah. Carry, spend a lot of their time lying down chewing.
+
+Hey, spend most of the time just sat there. Yeah, chewing, okay?
+
+[Speaker 2]
+It's part of it, but it's incredibly rare. That's why we're struggling because some of these behaviors are quite rare to actually find mainly. Self-Grew me like I care was just?
+
+[Speaker 1]
+And they sit down and chew, chew grass, or whatever they're doing and. Occasionally walk around, so there's it's kind of, you know, this massive amount of data that we've got? But some of the behavior is incredibly rare. Yeah. Good.
+
+So, what? So, what kind of projects? What's the list of projects you might imagine someone be able to help you with? What's what's useful to you? Um. So?
+
+[Speaker 4]
+We, uh, we, I, me, and another two colleagues we're trying to. Recognized ascending lighting. Walking and transition tradition is like lying down and centered up these behaviors. But we are enabling. Step, so I'm thinking, if you're interested in, like? Developing the the model, maybe in future? Then we can start from the data annotation.
+
+So, a whole bunch of the work we do in computer vision involves somehow having to create some data.
+
+[Speaker 1]
+It's a big models, big computers and models like Sam 3 can help with that because they can find all the carries in an image, maybe, or they can do some simple tracking. But they won't tell us things like what the Cam's doing they just just can't cope with things like that.
+
+So, a whole load of computer vision basically involves somehow collect some data, and often that means a human being being in the loop, clicking on things for weeks and weeks at a time. We, we have some data, but it's very, very. Take a long time to collect and the Vets who are doing it for us don't really understand why we need so much data.
+
+We need thousands and thousands of examples to train a good model and. Like, well, I've done five minutes. But there's only one cow, and it's only doing one thing. So it's, um, it's hard to explain exactly why, why we need someone to say so, the whole load of? Work to do with how we collect data.
+
+How a human being marks it up. Create a label for that data. Each cow is it standing? Is it walking? Is it sitting and then given that data, there's a whole load of work around doing the properly hard computer vision work. The Deep learning, given a bunch of data where we know the.
+
+What the cow is the picture of the cow, and we've got a label saying what it's doing. How can we create a classifier which allows us to make sense out of all of that and that often, um. You can think of it as being to do with a still image, a single image.
+
+Or you can think of it as being to do with a short clip 10 seconds worth of the count, moving or doing something. It's often in 10 seconds. Yeah. So, we often split these things up into 10 seconds because one of the standard models for doing the for being a classifier on this data assumes you've got three frames over 10 seconds, doesn't it?
+
+Uh, 53, yeah, sorry, more. Yeah, not some some frames, but over about 10. So that's that's kind of, explains your work a little bit. Um, it's about behavior. It's about understanding what the cows are doing. And mainly most of the work we've been doing at the moment is on single cow.
+
+So, just one cow, what's that cow doing? We've done no work at all yet on when cows have a fight or bully each other or want to push each other. We have no real way of doing that at the moment, because all our work assumes we've got a bounding box for two cows.
+
+So we've got the box for this guy. We've got a box for this cow. So Advanced work would be looking at. Can you find the position in the image where some kind of touching has gone on? That's a different type of work, isn't it? We have no data for that.
+
+[Speaker 4]
+Yeah, we,
+
+[Speaker 1]
+We only have data for the whole of a box of a cow. We don't have any dates about where cows are touching, and what what is going on? So that's kind of one possibility as well, right? So that's one chunk of the work we're doing Phoenix, yeah.
+
+[Speaker 2]
+Okay, so before? Maybe?
+
+[Speaker 5]
+Maybe, maybe, um, annotate the data previously or from one camera? Can you expand broadcast this information to different cameras when the very same cow travel to different places or different cameras.
+
+[Speaker 1]
+So, so these cows don't have a name, but it's like the cows have a name, right? They have a name. Can you say which car is which over lots of cameras? Just scroll back a few seconds. Right? So from?
+
+[Speaker 2]
+So, from the example, this is a YOLO based rotated bounding box annotation, which you can see that we preserve the cow's information from this camera. The second to the to the middle camera. Okay, so this cow is moving towards. Oh, so we do ends just a short clip of an example.
+
+But based on that, it's work for saying, how, in this, in, um, again, okay?
+
+[Speaker 1]
+Some reason. It's plural in the first few seconds, so Daniel would be like, yeah, like that. So, so what happened here is? We've found the location in every cave and then as it moved from one camera to another. Somebody by hand. Has marked up the fact that this is the same cow moving from one camera to another, so this is all ground truth, right?
+
+Yeah,
+
+[Speaker 5]
+These are the Grand truth path of the re-id, so the actual re-id, the magical part, what a magic part is. Can we use a deep learning based model to preserve? Based on the counts, regardless of how it's been prospected or the transition of the feature.
+
+[Speaker 1]
+So, this work, we call the re-id work reit re-identification. F****** spell it.
+
+[Speaker 5]
+Free item. I yeah,
+
+[Speaker 1]
+Re-Identification, right? Given a cow, it's called John. Can you tell that John the next day? Can you tell which car is John? And we've got lots of cows, so this is a complicated Challenge. And we've got two sets of data, right? Yeah,
+
+[Speaker 2]
+That one,
+
+[Speaker 1]
+You just showed us who set the data that was that yours?
+
+[Speaker 5]
+Uh, that's how mine that's too much data. We've got two sets of data, one which will nickname.
+
+[Speaker 2]
+Tong's data. Yeah, and we've got another one very similar.
+
+[Speaker 1]
+Which we'll call the Phoenix data, right? They're all very similar. They've got lots of cameras, lots of cows. They're all moving around from one place to each another. There are subtle differences with them. This data has been labeled one frame a second. So, once a second, you know where the cows are and which car is, which kind of?
+
+And your one. It's every frame, isn't it? It's every frame. It's every single frame that's the masks. The the polygon masks set up the founding box, which may introduce some background noises. We don't find it, so it's not just a rectangle. It's truly, uh, saying, where the cow exactly is.
+
+Each pixel of the cow is has been identified, and young cow pixels are being blurred out by some artificial background, which is the average. Color of? Cow
+
+[Speaker 2]
+Part to highlight the coward star head. Just just get distracted outside of. The apartment, which is.
+
+[Speaker 1]
+So, the so each item would look something like this, which is the segmented. Uh, this is the psalm 3 base segmented cow. You can see that by the time the the file itself is basically the time of it, so it kind of storing the temporal data we want to use it for consistency if we want to.
+
+Validate a cow that appears in one camera. Obviously, if if none of the cameras overlapping? One cow suddenly won't appear in another one on the same timestamp. So, based on this information, can we do a read ID without say? We have a heavily operator based eye observation and manually track everything because there's millions of data for even just a sec section of a profile, let alone the whole form a larger formula, Etc.
+
+But to validate that we still need. A part of? Um, I looked at the data for how, for the validation purposes, and I think one of the thing you may want to do is to have. A gooey, which stands photographical user interface like a software. To say, okay? We have two entries of cows.
+
+We can validate. Okay, this one belongs to the one I've seen before. Therefore, I gave them the ID John. The other one I have seen before. Which is different, which I just named. Something else. Yeah, probably. And one of the challenge I will think of is between cameras. The cows may appear on different faces, so one camera you can see this is the back.
+
+This left part of this torso. But from other cameras, especially when they Transit from either from right to left or left to right, or they are moving at completely different direction. Yeah, you can see the rub. You can see. A mini, a miniature of an overlapping torso, the spine area, and then suddenly the very same cow.
+
+What you can only see from the very same? How is the right part of it? Sorry if this is a cow. Looks like this is the pattern on the curve, and then it turns around. Suddenly, you've got a completely different pattern there, right? And you should be able to learn that, maybe because the cow is turning around, you should be able to track it as it turns.
+
+Or maybe you've got two cameras viewing the same case. It's a complicated thing to do, but these cameras are not just viewing the cow from the top. They're viewing it from an angle, so you're seeing different weird views of the cow, so it's not as good as as. Imagine to say which cow is which folks think?
+
+Oh, it's going to be really simple because the cows all look the cow should look the same, right? But it's not. And even if it was, even if you did have cameras that were pointing down the skin that the cow is moving as as it moves. It's stretching and flexing its skin.
+
+And there's a defamation of the coast. Pattern, and that allows some effects like whether you encountered a wet day or rainy day, which affect the camera's performance or a bright day. Like, this day, we got it pretty much Amplified exposure. So, which, let's say, we amplify the brightness of white part and?
+
+I'll compare with other dim days, where we sort of like having a. Contrast between the features, so the cameras try and self-adjust the amount of lighting, but in practice, if it's very bright. You get a different appearance to the cow. It's never quite as simple as. Be able to adjust very bright over, and some of these cameras are effectively night division.
+
+[Speaker 2]
+A night vision appearance is very different to a
+
+[Speaker 1]
+Daytime opinion, so the whole load of reasons why just saying which car is, which sounds like it should be simple, but is really quite a complicated thing to do. So there's a lot of research in this field and Phoenix has done loads with his data. We haven't done any with tongs data yet.
+
+Hello, we haven't done anything with tongs days to trying to re-id cares. So, if people are interested in deep learning? Taking some of that data and reapplying some of the techniques you have done is interesting. There's, um, some more work about. Rear, reapplying different techniques to the data we have you.
+
+So, we have a bunch of work that seems to work okay. Could we change the pipeline, so the techniques for doing it are different. Can we explore different types of classifiers? Different types of backbone can improve the data. Because what happens at the moment is we have tracking? Has tracked a cow as it's moved from one place to another, and then another cows walked in front of it, or some things happened, which means.
+
+Does a gap now? Suddenly, this cow is being tracked again, but there's a gap in the middle. And if there's another. Doing this. It's not clear whether. The tracklist is like this for the tracklist is like this, and the best trackers in the world can't deal with that they fail.
+
+Cows exclude each other suddenly move away, Crossing causes a problem, and one of the things we could do here is write a piece of software, which allows a human to very quickly say, this is the same as this. This is not the same as this one, so that's that's.
+
+Thing we to do somewhere, sorry? I think you basically said, all good, so? That's the background of the work that we're doing. And we are looking to give you tasks which are useful to our PhD students. But which are will get you a good Mark as well, right? I don't want to give you things which are impossible or too easy or aren't going to get you a good Mark.
+
+So? Let's hear from you. Tell me what kind of project you want, and we're taught by project. I'm talking about 100%. It's just just software parsing Json files, drawing things on the screen. Those kind of things. And then there's very, very deeply. Scientific approaches, which is deep learning. So, so this, this is research.
+
+And most people are going to sit somewhere in the middle, but some some people will want a project that's mainly down at this end, which is about, can I just write a piece of software that's useful to you? And some people will want to do really, you know, tricky?
+
+Deep learning bonds, which is much higher risk. And, um, it's not clear if that's going to, um, you know how well that works, even which doesn't matter, but it's a it's more of a difficult thing. You'd have to understand how to use our high performance Computing there. Amounted data here.
+
+There's a massive amount of processing that needs to go on as well. So? Who wants to start? Have a chat to me? Tell me what kind of project you want?
+
+And we're very quiet. Tony, I'm scared now, because you're all so quiet.
+
+[Speaker 3]
+I'm more interested in the behavior, behavioral data,
+
+[Speaker 1]
+Okay, but but what kind of project are we talking about? Are we talking deeply scientific? Are we talking creating data and we're talking software? What? What types? What sorts of projects? Um, maybe more.
+
+[Speaker 3]
+Scientific. Yeah, so do you have experience in deep learning or computer vision?
+
+[Speaker 1]
+I just watched
+
+[Speaker 2]
+The video
+
+[Speaker 3]
+Song like, yeah,
+
+[Speaker 1]
+I'm not fine. That's normal, right? You won't expect it to be experts in computer vision. What I don't want you to do is take on a massive piece of work. Where you don't have the experience or the ability really. To finish it, you have a relatively short amount of time, right?
+
+And
+
+[Speaker 3]
+If
+
+[Speaker 1]
+You spend three months trying to learn how to use our high performance computer and understand deep learning, you won't really have very much to show Forest, so I need to understand really how long it's going to take you to get up to speed with those things how you know.
+
+It's nice to want to do a research. Um, based version of a project, but if it means you are going to fail, that's a bad thing. For me, my my job is to try and get you all a good Mark, right? That's, that's my one job here. And so, I wanted to kind of try and understand.
+
+How the behavior might work, what kind of data you'd use, how you might want to. Interrogate that data. So, I want to ask a question, like? Does a behavior data want to like include? Like behavior between each individuals.
+
+[Speaker 3]
+We haven't done that
+
+[Speaker 1]
+Yet. We haven't got any data about when two cows touch, so one idea might be maybe. Take some data, mark it up in terms of the point of contact. So, like hot spots in the whole image, so there's a whole image. There's a cow here. There's a cow here.
+
+Very bad at drawing cows. There's coat here. There's a cow here and here they touch. So, you say he's a hot spot where these cows but touched, and you create thousands of those frames. So, it's got to be a really good piece of software to do that really quickly.
+
+Right, and then based on that, we might be able to train up some deep learning to to give us a map that shows us where those hot spots are in the image. Right, where things are touching in the image, and I don't know a lot about this. Do you have a lot of experience of just sort of the image based rather than bounding box approach.
+
+Yeah, I think you can just.
+
+[Speaker 4]
+I think this problem is the image detection
+
+[Speaker 2]
+Problem, so
+
+[Speaker 5]
+You only need to detect the whole point or maybe a button box. Hello, yeah.
+
+[Speaker 1]
+I'm good. Yeah, and also you don't need to like.
+
+[Speaker 2]
+Stop the the video problems. Oh sorry. Sorry, go on. Yeah, I just explained that, um, if hey, you want to do some research. He can start from image.
+
+[Speaker 5]
+It's no need to be video images.
+
+[Speaker 1]
+Yes, yeah. Yes, you can just be an image and the output of the network could simply be an image, right? It'd just be a hotspot. Yeah, sort of map. Yeah, if you want, so that's so. That's definitely a possibility, right? Who else wants to go on? Um, I'm more interested in please?
+
+[Speaker 6]
+Uh, um, I think I can do something about software. Okay, um, it's about the system that it has. Cow's behavior and?
+
+[Speaker 4]
+Maybe I can use agents to, like, run, run the farm? Start. Uh, tell them the cow is. On your raw or it's? I, I mean, is that good?
+
+[Speaker 1]
+It's a that's a bit more advanced that because we don't really have that data, right? These cows are. It's a real farm, but it's on a vet school. These cows are really well, right? They are kept really well, so find the examples of cows, which are not well. Is a bit tricky, right?
+
+So, we don't have a lot of examples of unwell cows annoyingly, but what what we're trying to do is build up towards it by trying to understand things like, how long, how much do these cows stand up? How much do they like, like, and lay down? Um, all of all of those kind of slightly simpler things, which eventually will lead us to be able to try and judge how well the cows are.
+
+Do you think trying to judge how well the cows are is possible? We,
+
+[Speaker 5]
+We don't have much data that the yield cause yeah,
+
+[Speaker 1]
+Yeah, I
+
+[Speaker 6]
+Mean,
+
+[Speaker 1]
+Some some blood. Some blood work's been done, hasn't it? So they've taken some blood tests, so we do have some data. Yeah, but I'm sure we'll be able to regress to that data, right?
+
+[Speaker 2]
+I think Marco has saved it like six more detail or 6 weeks later
+
+[Speaker 1]
+With the baptized or other information, and it could be the grudges of if need to call if you or not, but
+
+[Speaker 4]
+I didn't, really?
+
+[Speaker 1]
+We haven't got that, and we haven't got the ear tag numbers either. Yeah,
+
+[Speaker 4]
+Yeah,
+
+[Speaker 1]
+I think that's slightly too advanced for now. We hadn't really got that data, but I think we could easily imagine a world in which. Doing something just short of there, trying to understand behaviors. What? What kind of thing would that be? The behaviors. Yeah. I mean, it could just be as simple as, um.
+
+How long they spend lying versus standing, or those kind of things, because you imagine if a cow is ill? It's going to lay down for a long time and not be as quick to stand. Perhaps it's about things like how they there's a theory that cows who are not very well take longer to stand up.
+
+And they lay down, they said. You know, we know, if the cows stood up, we know if the cow's laying down what we don't have much information about is the is the movement between those two things, and maybe we could do something to do with the?
+
+[Speaker 4]
+But, but if we want to do like statistics about the how long they stand to lie lying, we need the model
+
+[Speaker 1]
+First. Yeah, that's true. We, yeah, there's two ways of thinking about. This is either we need a model, which tells us all the time that hours and hours and hours, whether the cows up or down at all. We could just look at how it, how it moves between those two states, right?
+
+How long it takes to get up and down? Maybe perhaps there's a difference in how long? That's quite interesting thing to do, and also. The project can make a bit more best to the. To bite to the biolence part, like?
+
+[Speaker 4]
+Like the students, they manually observe the video. Yeah, and connected the the time,
+
+[Speaker 1]
+Okay,
+
+[Speaker 4]
+Spending it or lying with the disease specifically. Yeah,
+
+[Speaker 1]
+Yeah,
+
+[Speaker 4]
+You don't need to develop the model to do the things.
+
+[Speaker 1]
+Yeah, so perhaps one project is around the transitions between standing and lying. Yeah, and we can
+
+[Speaker 4]
+Start
+
+[Speaker 1]
+To get an understanding of how long it takes, what the average is. Yeah, like how long they?
+
+[Speaker 4]
+And transitions. Because if you like, take several times to lock it down. Maybe there's a problem with the car? Yeah, so the time to do this task about how long the cows but and lying that was standing up, then connect. Data with.
+
+[Speaker 1]
+Nice. Yeah, okay, that's. That sounds like a possibility. I'm going to write all these down because I'm going to forget. The fact that we talked about sorry the one when we mentioned very briefly for you was which one was that?
+
+Interaction. Okay, that's good, so that's. Which are possible? Who will? So,
+
+[Speaker 7]
+So I'm interested in deep learning.
+
+[Speaker 1]
+Okay, yeah, I won't
+
+[Speaker 7]
+Do that. And because, uh, first, I have a basic about the computer division. Okay,
+
+[Speaker 1]
+Yeah.
+
+[Speaker 7]
+And, uh, maybe I think I can, uh, training the machine, and maybe according
+
+[Speaker 2]
+To
+
+[Speaker 7]
+The cow, cow spin, or cow's Behavior, like, like that, and I can, okay. So, so a little bit about that background, explain to people what you've done done?
+
+[Speaker 1]
+Before. Have you used a high performance computer? Have you used python? Have you trained something to do?
+
+[Speaker 6]
+Oh, I use some Matlab before, and I haven't just a little basic about python, and I do the, uh, like I, I try to do. Help the video to get stable because the video
+
+[Speaker 7]
+Before itself is moving. It's really, yeah, like that, and I use Matlab to make the video stay like that.
+
+[Speaker 1]
+So, so that allowed you to align frames, yeah, better. Yeah, basically allowed you just to align the frames up. Yeah, yeah, so you train the model which, what? Told you how to translate from one to another. I had to transform one image to another or what, oh, just transform.
+
+Transform the video. The the the.
+
+[Speaker 6]
+They're just transform a video to the stable use Matlab and have a Matlab. Has any specific tools to can can get transferred? Okay, so
+
+[Speaker 1]
+You learn to transform from overhead to another effect.
+
+[Speaker 6]
+Yeah,
+
+[Speaker 1]
+Okay, good. The fact is in Matlab, we don't use Matlab at all, ever? Yeah, no special reason. It's just all the tools we've ever used or in Python. So, now, everyone's really moved to Python, so you would be writing. As like, people, if they're doing any deep learning at all.
+
+We use some version of pile torch, do you, and do you use lightning, or do you just use python? Okay, so there's a Schism in the group. Some people just use pie torch and some people use a nicer version of it, but it doesn't really matter. Yeah. Okay, so you are?
+
+You'd like to do something a bit more ambitious, which is to do with deep learning, trying to understand some something about the cows. Yeah, because one idea, one interesting thing might be. Phoenix has done work on how you re-identify cows. So, you put each each cow basically into a deep Learning Network.
+
+You get an embedding space, and that tells you each cow goes to a different part of this space, and all the examples of the same cow you learned, push them into the same part of this embedding space, right? So all of cow one goes over here. Cow 17 goes over here.
+
+Cow six goes over here, and so on. This thing's called, uh, latent space and embedding space and a lot of our work is to do with how we. Create these spaces. And we've got a bunch of data. This thing I've called tongs data. We've never tried it with that, haven't we?
+
+No, so one idea would be to take the ideas that Phoenix has used on his his data and see how well that works on a piece of data. Needs to be examined, but we've never done anything with yet. So, there's loads of data we've got all the data. We know what the techniques might be because they are shown that the techniques weren't before you could take all of that data.
+
+Apply that pipeline to it and see if it works. Not what you want to do.
+
+[Speaker 8]
+Yeah, I want to do, and maybe I can try.
+
+[Speaker 1]
+Yeah, because I'm very interesting. Yeah, I mean, I think, yeah, I don't think it's too ambitious, because I think we kind of understand the pipeline. Yeah,
+
+[Speaker 9]
+We have the data,
+
+[Speaker 1]
+Which is quite nice, because because we tend to not have any data, so I think it's quite interesting that that could be a nice thing.
+
+[Speaker 2]
+I think it might also need to get yourself accustomed to high performance Computing, a high performance leading Services. Because once we encounter this much of data. 100% would be like, very difficult, unless you have a very powerful PC on local PC. It's very difficult to. One
+
+[Speaker 1]
+Gpu. You have to have lots, lots of memory, a nice graphics card, so you part the learning curve for you would be understanding how, how our high performance computers work and how you? You can't run a job on them. You, you submitting to a queue, and eventually you start running.
+
+And then it right to file and tells you when it's finished. It's not quite the same, just pressing go. There's a learning curve to slurm, and all these kind of tools. So, so anyway, that's one possibility, which would be to basically redo.
+
+[Speaker 4]
+The
+
+[Speaker 1]
+Real ID work, but applied to this thing I'd hold tolls, Tom's databition told data. Yeah, is this way of showing so that the film The Phoenix showed before the three cameras was the work of, uh, these Phoenix's data that Stones, oh,
+
+[Speaker 2]
+That? That was okay. That was
+
+[Speaker 1]
+Time to take it. Okay, so all this data, we have all the bounding boxes for the cows. We know which cow is which. Kind of in terms of a track lead, but we haven't. We haven't done anything which. Tries to do this via. Deep learning, deep
+
+[Speaker 2]
+Learning. These are like all manually annotated so that we make sure a cow and Traverse from this current one here, because what I won't support a map, but geologically speaking, the entrance is on the right side, and the cow is supposed to travel from right to left. So what, what they have done and what we have done basically as well is to have?
+
+An unintended version of the tracker. We have to make sure that this cow, it is the same cow that goes into this camera, and after a few seconds into the middle one and then goes to the left one, but then you invert that because we have loads of cameras before.
+
+[Speaker 1]
+So this, this data slightly different. In Phoenix's data, you put a rotated bounding box around the cam, this one you don't. You just put a rectangle that X is aligned rectangle that, well, he's he's his rotator bounding box. Oh yes, sorry. Yes, mine is, um, mask, yeah, sorry, yeah.
+
+There's a mask versus a rectangle, basically, so it's different in this data. You, you include some of the background. Some of the hail on the floor and those kind of things, but perhaps that doesn't matter because it's not really changing. Very much. He doesn't really do anything, so perhaps.
+
+But it's fine. Um. But uh, there are differences between these two set of data, so it'd be really interesting to see if the approach works just as well. Okay, that's. That's another, um, a possibility.
+
+[Speaker 4]
+More interesting in real identification. Okay, um, but I, I want to learn some deep learnings for? Some stuff, but I didn't.
+
+[Speaker 9]
+Um, experience, before. So, maybe I can mix up software and absolutely. So, I'd say, sounds like a good project for you would be one in which we.
+
+[Speaker 1]
+Um, choir, some data. You, you write a tool or write some way of maybe of creating some brand new data that we've never seen before. And then, if we have time? We go on to use some kind of Learning System to try and do something interest. A simple but interesting, and you can go, and if that works really well, then you can do some more advanced things.
+
+[Speaker 8]
+So, this
+
+[Speaker 1]
+Is the approach I'll generally take with you is to get you a project first that big rush. Make sure you've done enough for a project, and then at this time. At the end, we can do something really interesting and different and more advanced a bit more risky. But the idea is to give you something safe and.
+
+Uh, not simple. That's not the word. I mean, it's clear at the start. I mean, really clear, simple. So, would that be? But a good one for this. Do you think be the cleaning of your data for tracklets and grouping grouping? So, then, this thing I talked about before.
+
+In both of these sets of data, potentially you've got track. No, not not in tongs days or in your data.
+
+About your heavy manual annotation. Yeah. He also like spent quite a quite amount of time doing that. Yeah, yeah.
+
+[Speaker 2]
+So, who has all the grouches it doesn't? Yeah, so he did it solve the question? Yeah, he
+
+[Speaker 1]
+Only have the three cameras in, but not for all the cameras. Yeah, it blows three. He's glued tracklets together. He's he's manually fixed tracklets, which are broken.
+
+He glued them together. Yeah, include them together. So, so, in your data, yeah, in your data, we have. Cows being tracked, which which we call a tracklet and some of them, not very often. But some of them break. And they were not quite sure where the tracklet has gone on to then.
+
+Would an interesting thing for you to be to find, try, and work out where there's a break in a tracklet, whether the cow has left the screen, or whether it's just being mistracted, something's gone wrong. So, you get a sort of cleaned up version, a better version of the data than we have, um, here.
+
+And then we. We use that to re-id the cows. And it should be better doing that, or we have more data, or we have more ground. Truth isn't we? So that would be the. Fixing broken triplets? Yeah, fixing.
+
+Chocolates in Phoenix as doctor. Yeah, good. Talk to me. I know you've missed all the. Yeah, it's fine. It's okay about, um, the data. We just a slight recap. We talked about Quayman's work, which is behavior detection where she's got a number of data sets, smallish amount of data in the scheme of things mainly, but um, it's got set of data where, um?
+
+We're trying to understand what the behavior of a single cow is, whether it's grooming, eating, standing, lying, all of those kind of things. And we've got the Phoenix data and Tom's data, which is to do the ones you've seen here, which we're trying to re-ide the character and say, which car is which?
+
+Particularly, the ambitious thing is across many different cameras, where the appearance of the cow is changing as he turns around. Or you see different views of the cab, and so on. But the big thing I guess is to understand where you want to be on this kind of scale about trying to write a bit of software, collecting some data doing deep learning.
+
+That kind of that kind of okay, which means is the hardest part. The Phoenix one, right? Think statement, um, I'm not sure these these. These are both things being done by. Um, these are both BHD students. They've been doing this for years. Yeah, they're both ambitious and complicated things to do, so I'm not sure.
+
+I'd say that there's a there's a harder one here. There's a there's one where we have less data, which is this one. Is much less data about behavior hearing, right? Because this, this hasn't been going as long, and it's difficult to extract the behavior of cows. It's very complicated to do that.
+
+You have to have a vet who sat there clicking, saying this is standing. This is grooming. This is aggressive behavior. Whatever the labels are. And that takes a long time, and they're not very keen on doing it because they don't see why they should have to do it rather than machine blah, blah, blah.
+
+So there's less data there. So those are three different locations, right?
+
+[Speaker 3]
+To three different Farms, right?
+
+[Speaker 1]
+No, no, no, these are all the all. This data is filmed on the in the vet school at Langford, so Langford, near um, near well, just down the road from the airport. We have a vet school. On. There is a private Dairy farm, so it's a proper dairy farm.
+
+It makes money, they milk cows, but it's right next door to the vegetables, the better there all the time doing lots of things. We have cameras up in there, so it's. From the same Farm, but the set of data are slightly different. Different days, different cameras for different reasons, all the farm is being filmed, but exactly what's there, and exactly what's in the data you who have many different versions of data.
+
+Then, you some of it is, yeah, these types of behaviors, or these types of behaviors. So, there's loads of different setting data, but they're quite small, I guess, is the main issue here. Okay, right? So, so there isn't a there isn't an answer to the question? Is the hardest.
+
+I don't think to, you know, I'm not sure it's very well posed that as a question. Um, how many gpus do we need? I got 150 90. Um, that's nice. If you need more, we have a high performance computers you can use. It's better if you don't have to use them because there's a learning curve and queuing, and there's.
+
+That there are other people trying to compete for those. So, um, 50, 19, would that do for some of this? Well, if it's a single one. I would say it's just doing, maybe just doing slightly better other than our own laptops. Yeah, but I don't think we'll be like as fast as we got from HPC, it's doing stuff.
+
+Yeah, you can start on that, and then if you run, run out of power, you can start to use something else. I mean, I could buy a cloud service. Do I have I? You shouldn't have to buy anything you shouldn't have to pay any money for any of this because we have a University of Bristol service.
+
+Well, there's different ones, but we have, but we can use it. We can use it, but like, I say, you're competing for resource with other people, so there are sometimes the year where it's busier and crazy and possibly to worry about the resources after. Like at the middle stage or the end stage.
+
+Um, okay, so given all of that, I'm guessing you're interested in doing some kind of? Deep learning. Yeah, work. Um. Exactly? What would that involve? Which? Which one of these are you more interested in? Do you do particularly care, because because I have some thoughts about what I'm to do here?
+
+[Speaker 8]
+Maybe deep learning? Yeah,
+
+[Speaker 1]
+Yeah, so okay, one one idea for you, unless unless you've got any other, there's one idea is. Phoenix has a pipeline of data. And running a system which uses a lost function called ntx nth loss. And you say? Let's push. The idea of all of these cows into different parts of the latent space, right?
+
+So you have a latent space you push all these cows into a different part of a lace and space, and that uses one particular loss function. One way of doing is a math, a maths way of saying. All of these cows are the same should be in the same path of the space, and all these cars are different, so they should be in different parts of the space.
+
+One idea would be to experiment with different moss functions, right? We have used one loss function, one particular type of loss function. Yeah, one idea would be to use other contrastive learning skills. Yes, there's a there's a term called contrastive learning, which is basically, um, generalizes what we have done.
+
+And the accent law is one of the strategies for a massive category of contrasted learning, but by the definition is to say, we're learning things by comparisons. Comparison, yeah. So, it's saying, we know these cows are the same because we're tracking it. So, this is this cow is definitely the same.
+
+Yeah, we have examples of positive examples of the same as this one, so all the rest of the cows, especially the ones in another camera must be different cars, right? So they must exist in a different part of the space, so we know all of these ones should sit in the same path of the space and all the other ones must sit apart from it.
+
+Okay? And you do that process millions of times. You get yourself an embedding space where, hopefully, there are clusters of data. Each cluster is to do with one cow, and they're all separate from from each other. Doesn't tell you about, which doesn't really tell you what the cow is.
+
+It just tells you about. How the cows cluster based on their appearance, right, right? And we have one. We've tried that one way at the moment, which is, um, a contrasted learning approach. I think we have to use contracted learning. But there are many other types of contracted burning, so one.
+
+Which was just one way of being able to do it and people in recent years have been saying, well, ntx n plus is good, but it doesn't. It's not perfect. It doesn't always do exactly the right thing. Yeah, so we could investigate one part of this could be a review of these.
+
+Rival approaches rival yeah, one day in arrival. They claim they are better. We have reason to believe that might not be true, but. We haven't tried it, haven't tried it, so be good to put the existing data through. A slightly. Changed version of the pipeline and see what happens, right?
+
+See if this approach and that's quite nice because you'd be able to say which of these loss functions better? And perhaps why? So this is, this is the complicated question, why is it better? So doing it. Doing an experiment is fine, but be able to say why something is better or what's going on.
+
+It's kind of quite the difficult thing to do. Yeah, yeah. So, another project here would be to. Redo some re-id. Which? Which loss? Right?
+
+Right. If it turns out that these approaches are actually worse and our guess as to which, which one we should use was the right one. It's good to know that. Yeah, so I, I guess, a point I should make out here. Is that when you're doing these kind of projects.
+
+They don't have to work well, right. You just have to run the experiments show that you understand you've run the experiments. You understand why things have happened, but it doesn't have to be. It doesn't have to prove that something is better than something else. It might actually be a worse way of doing it as long as you understand that it shouldn't affect your Mark at all.
+
+It's about doing the science. It's not
+
+[Speaker 2]
+About stumbling across something brand new doesn't have to be about. It's nice if it is, but it doesn't have to be about that. Yeah. Right? Um, what? Haven't we said?
+
+[Speaker 1]
+These. These are just five things we've discussed. Are there other versions of projects we haven't discussed? Is there any you are desperate for someone to do, that we happen to talk about?
+
+[Speaker 2]
+Well, that will be like slightly the vast, but? No finish. Let me see if I can find it, but yeah, go ahead. So no one will do this software. So well, there's some some bitter software in this, right?
+
+The The Hot Spot?
+
+[Speaker 1]
+Stuff needs some data.
+
+[Speaker 4]
+Yeah,
+
+[Speaker 1]
+So perhaps there would be some software to find those hotspots?
+
+[Speaker 4]
+Well, maybe they only need to use the existing images. I don't think the Bia would be good, but it's for video adaptation, right? Amy detection, maybe look, um? Inch label is all part of the project. I guess to work out if you need new data.
+
+[Speaker 1]
+All their existing tools that work well to collect that, or you have to write your own version, or is it better to write your own version because it's faster and so on. That's all up for grabs. I'm not saying you have to do have to write your own software, I'm saying.
+
+Do whatever is easiest to get the data. See you next one. What time are you looking for? I'm looking for the video version of the demonstration, but if it's okay from here, that's. That's like a meaty thing. You want to dumper now. Um, is to utilize the power of what we have on prompt models by prompt remain.
+
+Instead of, we draw annotations like a slide of the bounding boxes. We utilize some very powerful existing large models, like open localization, vig. Dino, Etc. To use the text prompts to do something say on this sophisticated cow crowded scenario, which we may encounter during the chocolate conversion part. Yes, split the cows.
+
+And by that we have first and foremost. It's as a it's a, it's a frame or a video of cows and just crowded together. Because based on their. Biological appearances. It could be quite misleading even to. Human operators to draw perfect. At patients. So, to make this fully automatic and we believe.
+
+Some existing goo models are doing well. We can say, using the text bronze to say, first, crop the house. I'll automatically based on the. Based on the text prompt and then. Based on the what we have on the boundary boxes. And now, in this case, it's not. Uh, rotated, but purely acts as a line.
+
+We can convert them into a detailed representation of the mask to say, okay. These parts belong to one cow, and these points should belong to another which sorts. Doing with us. Traffic Collision. Cow pollution Parts issues in a more sophisticated way. So, guess what we're saying is, most of the data we've talked about.
+
+So far, the cows are reasonably spread apart. They kind of there's one car over here. There's one cow. There's one cab. There's some version to this data, where the cows have been compressed into a tiny space and standard models don't do very well of being able to work out where the cows are because of the patterns on the cows are designed.
+
+It's camouflaged basically. Patterns on the cows are designed, so that's a predator can't pick one off the side, right? In a herd of cows, they want to look like one big group rather than setting individuals. So, a lot of these models don't work very well on huge sets of cows.
+
+They sorry on picking single cows out of a dense group effectively. So, that's like, show us video representation. What's going on here on the video? It's breaking stove sampled per second, which is 25. 25 frame per second video, but you can see that there are some.
+
+That's not coping around. So, anyway, it's you know, this is. A trick that we haven't talked about that task at all. This, this is a confident task trying to. I like ID and even segment cows when they're very closely packed together. We haven't talked about that at all, but it's that's interesting.
+
+We could. Uh, and more importantly, without any sort of. What would minimal or even without any sort of humanification? It will be a purely using the power of existing large models to be like transfer learned. On their weights. For our task, just like. Um, existing models do a quick, pretty good job in identifying many different items, species, or whatever.
+
+By fine-tuning that, we can say it's possible to do so. Um, without. Introducing many of the. Human reality data. Yeah, yeah, okay. So, what's um, watching on the next steps to be, I'm thinking? You go away, you have a think about what we've said, um? I'll set up a teens group for all eight of us to be here.
+
+You then come back on that group perhaps tomorrow and say, I want to do the project based on blah. You can have a further chat about data and so on with. With one one of our and PhD students or someone else. If there's someone better to talk to? And.
+
+Then, you should be able to understand what the project is about and where to start. So, the first steps would be understanding what you do in the first week. What's the first week's worth of work, right? My my job as a supervisor here is obviously to get you going.
+
+Get you understanding the project and making sure you've got something to write quite quickly. You know you've got something to do quite quickly? Thank you! So we have some meet you small, right? We are. I am going to create a teams group and you what we're going to write based on our chat today.
+
+What you want to do, and I'm assuming you might be one of these things if you go away and think about it and go actually, do you know what I've been forced to do something I don't really want to do sorry, sorry. Yeah, that's fine. It's fine, you, you know, you can come back, talk about something else, but let's let them do it in a in a group.
+
+So each person knows what, what the other people are doing, yeah? There's a lot of crossover. A lot of the data might be similar. A lot of the techniques might be similar, so it'd be silly for you to just do it in a each by yourself. Um, when it comes to having a meeting, we will have a meeting me and you will have a meeting each week, just just just me, and you one on one.
+
+I'll create a time you can book me. You don't have to see me every week if you don't have anything to say, that's fine, but will have a chance to talk one-on-one, and I'll also assign you to one one of these guys as well. So, if you have anything about how does python work or how, how do I access this data?
+
+Um. Those types of questions you can talk to them as well, if that's okay. Happy! Um.
+
+I think that's a bad taste. Is that about it? I think we are about done could could have a very quick chat at the end. Yeah, with you. If you just stay behind, yeah, sorry, I know. It's fine, it's good. And then, if you give me 20 minutes or so, stop back a week, another chat, if that's all right.
+
+[Speaker 2]
+Yeah,
+
+[Speaker 1]
+Yeah, is that right? I will meet him, uh, well, it's just a rough time just to stop back in about. Them. Yeah, set up to go away. Come back again. Just go grab coffee. I'll come back in 20 minutes. Yeah, okay. Good, all all set of the teams group.
+
+I'll write a big T on the back of my hand, so don't forget. And, um. As soon as you assure that you want to do the one that we've described, tell me what you think it's about. Um, we will. Just stop doing it. Yeah, happy, happy, perfect! Thank you very much folks!
+
+See you soon!
+
+We're still assuming kilos around. As he said, if he's here on them, no? No, you haven't seen anything since last week. Nothing, okay, all right. Send, um, send a message while in the get now. Send a message check he's coming, because if he's not, you can come and see me, you know?
+
+12 o'clock or something instead, instead of waiting till hard to
+
+[Speaker 5]
+Yeah, good
+
+[Speaker 2]
+Booking link. You send us yes was for your grade full screen. Um, I
+
+[Speaker 1]
+Think yes, it's the same thing it's project. It should be titled as project. Are you just, you know, really loose way, just reap up just? Was doing for the undergraduates to be a postgraduate again. If those times of the week don't suit you, I can. I can have a separate one, some other time as well.
+
+So just just shout it to me, don't just suck it up. Shout at me, yeah, thank you good. Thank you folks. Sorry for taking a seat for two dollars, all right. No, I don't so, and I don't have any fried in my
+
+[Speaker 7]
+Seat. And
+
+[Speaker 1]
+Thank you Dr. So it's really hot today. So, yeah,
+
+[Speaker 7]
+Good job. He did it first thing in the
+
+[Speaker 8]
+Morning. Okay, um?
+
+[Speaker 3]
+Yeah, he was like our last birthday.
+
+[Speaker 10]
+Um, um.
+
+[Speaker 3]
+A project.
+
+It's a long way.
