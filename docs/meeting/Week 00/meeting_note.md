@@ -11,14 +11,14 @@
 ### A. Huimin — Cattle Behavior Recognition
 * **Methodology:** Crops individual cows from raw farm videos into short 10-second clips and feeds them into video classification models to detect specific behavioral labels.
 * **Target Behaviors:** Includes standing, walking, lying, and the physical transitions between standing and lying.
-* **Core Bottlenecks:** * Certain crucial behaviors (e.g., self-grooming) are incredibly rare in the massive dataset, making data collection slow and difficult.
+* **Core Bottlenecks:** Certain crucial behaviors (e.g., self-grooming) are incredibly rare in the massive dataset, making data collection slow and difficult.
   * Veterinary annotators often struggle to understand the massive volume of data required to train robust computer vision models.
   * The lab currently lacks structured data regarding cattle-to-cattle social interactions, physical contact, or bullying behaviors.
 
 ### B. Phoenix — Cattle Re-Identification (Re-ID) & Tracking
 * **Methodology:** Focuses on identifying the same individual cows across multiple non-overlapping cameras by utilizing contrastive learning pipelines (e.g., NT-Xent loss) to cluster cattle features in an embedding/latent space.
 * **Data Characteristics:** Employs YOLO-based rotated bounding boxes and Segment Anything 3 (SAM3) polygon masks to isolate cow textures while blurring out background noise like floor straw.
-* **Core Bottlenecks:** * Even state-of-the-art trackers consistently fail when cows overlap, cross paths, or crowd closely together, resulting in fragmented tracking segments ("broken tracklets").
+* **Core Bottlenecks:** Even state-of-the-art trackers consistently fail when cows overlap, cross paths, or crowd closely together, resulting in fragmented tracking segments ("broken tracklets").
   * Resolving these broken tracklets currently relies on extensive, highly inefficient manual observation and manual annotation by human operators.
 
 ## 3. MSc Project Allocation & Scope (My Project)
