@@ -5,7 +5,7 @@ from pathlib import Path
 import xml.etree.ElementTree as xmlET
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QSlider, QLabel, QPushButton, QFileDialog, QSizePolicy
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont
 
 
 class CowTrackerApp(QMainWindow):
@@ -15,7 +15,7 @@ class CowTrackerApp(QMainWindow):
         self.dataset = []
 
         self.setWindowTitle("Cattle Tracklet Merge Assistant")
-        self.setGeometry(100, 100, 900, 600)
+        self.setGeometry(100, 100, 1000, 700)
 
         # Widget
         main_widget = QWidget()
@@ -68,6 +68,39 @@ class CowTrackerApp(QMainWindow):
             # Show Image
             if os.path.exists(img_path):
                 pixmap = QPixmap(img_path)
+                if os.path.exists(xml_path):
+                    cow_boxes = self.parse_cow_xml(xml_path)
+
+                    painter = QPainter(pixmap)
+                    pen_box = QPen(QColor(0, 255, 0))
+                    pen_box.setWidth(4)
+                    font_text = QFont("Arial", 16, QFont.Weight.Bold)
+
+                    for cow in cow_boxes:
+                        cx, cy = cow['cx'], cow['cy']
+                        w, h = cow['w'], cow['h']
+                        angle = cow['angle']
+                        cow_id = cow['id']
+
+                        painter.save()
+                        painter.translate(cx, cy)
+                        painter.rotate(angle)
+
+                        # green box
+                        painter.setPen(pen_box)
+                        painter.setBrush(Qt.BrushStyle.NoBrush)
+                        painter.drawRect(int(-w/2), int(-h/2), int(w), int(h))
+
+                        # yellow ID
+                        painter.setPen(QColor(255, 255, 0))
+                        painter.setFont(font_text)
+                        painter.drawText(
+                            int(-w/2), int(-h/2) - 10, f"ID: {cow_id}")
+
+                        painter.restore()
+
+                    painter.end()
+
                 scaled_pixmap = pixmap.scaled(
                     self.image_placeholder.size(),
                     Qt.AspectRatioMode.KeepAspectRatio,
