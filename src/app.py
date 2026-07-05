@@ -1,5 +1,6 @@
 import sys
 import os
+import math
 import zipfile
 from pathlib import Path
 import xml.etree.ElementTree as xmlET
@@ -150,13 +151,14 @@ class CowTrackerApp(QMainWindow):
                     'name') is not None else "Unknown"
                 robndbox = obj.find('robndbox')
                 if robndbox is not None:
+                    angle_rad = float(robndbox.find('angle').text)
                     cow_boxes.append({
                         "id": cow_id,
                         "cx": float(robndbox.find('cx').text),
                         "cy": float(robndbox.find('cy').text),
                         "w": float(robndbox.find('w').text),
                         "h": float(robndbox.find('h').text),
-                        "angle": float(robndbox.find('angle').text)
+                        "angle": math.degrees(angle_rad)
                     })
         except Exception as e:
             print(f"Error parsing XML: {e}")
