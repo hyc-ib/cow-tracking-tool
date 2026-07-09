@@ -1,10 +1,31 @@
+"""
+Cattle Tracklet Merge Assistant (Frame Edition)
+
+Folder structure expected:
+  <camera1>/
+    └── frames/
+        └── <20250910T054951_20250910T061053>/
+            └── <20250910T054951_20250910T061053_frame_0050>.jpg
+    └── <camera1>_xml.zip
+"""
+
 import sys
 import os
 import math
 import zipfile
 from pathlib import Path
 import xml.etree.ElementTree as xmlET
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QSlider, QLabel, QPushButton, QFileDialog, QSizePolicy
+from PyQt6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QSlider,
+    QLabel,
+    QPushButton,
+    QFileDialog,
+    QSizePolicy,
+)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont
 
@@ -26,7 +47,8 @@ class CowTrackerApp(QMainWindow):
         # Button (Open Folder)
         self.btn_open = QPushButton("Click to Open Folder")
         self.btn_open.setStyleSheet(
-            "font-size: 16px; padding: 10px; background-color: #005088; color: white; border-radius: 5px;")
+            "font-size: 16px; padding: 10px; background-color: #005088; color: white; border-radius: 5px;"
+        )
         main_layout.addWidget(self.btn_open)
         self.btn_open.clicked.connect(self.select_folder)
 
@@ -34,9 +56,11 @@ class CowTrackerApp(QMainWindow):
         self.image_placeholder = QLabel("Please Select Folder First")
         self.image_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_placeholder.setStyleSheet(
-            "background-color: #f3f0df; border: 2px dashed #005088; font-size: 20px; color: #005088;")
+            "background-color: #f3f0df; border: 2px dashed #005088; font-size: 20px; color: #005088;"
+        )
         self.image_placeholder.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored
+        )
         main_layout.addWidget(self.image_placeholder, stretch=4)
 
         # Time Slider
@@ -63,8 +87,8 @@ class CowTrackerApp(QMainWindow):
     def slider_changed(self, value):
         if self.dataset and value < len(self.dataset):
             frame_data = self.dataset[value]
-            img_path = frame_data['image_path']
-            xml_path = frame_data['xml_path']
+            img_path = frame_data["image_path"]
+            xml_path = frame_data["xml_path"]
 
             # Show Image
             if os.path.exists(img_path):
@@ -78,10 +102,10 @@ class CowTrackerApp(QMainWindow):
                     font_text = QFont("Arial", 16, QFont.Weight.Bold)
 
                     for cow in cow_boxes:
-                        cx, cy = cow['cx'], cow['cy']
-                        w, h = cow['w'], cow['h']
-                        angle = cow['angle']
-                        cow_id = cow['id']
+                        cx, cy = cow["cx"], cow["cy"]
+                        w, h = cow["w"], cow["h"]
+                        angle = cow["angle"]
+                        cow_id = cow["id"]
 
                         painter.save()
                         painter.translate(cx, cy)
@@ -90,13 +114,12 @@ class CowTrackerApp(QMainWindow):
                         # green box
                         painter.setPen(pen_box)
                         painter.setBrush(Qt.BrushStyle.NoBrush)
-                        painter.drawRect(int(-w/2), int(-h/2), int(w), int(h))
+                        painter.drawRect(int(-w / 2), int(-h / 2), int(w), int(h))
 
                         # yellow ID
                         painter.setPen(QColor(255, 255, 0))
                         painter.setFont(font_text)
-                        painter.drawText(
-                            int(-w/2), int(-h/2) - 10, f"ID: {cow_id}")
+                        painter.drawText(int(-w / 2), int(-h / 2) - 10, f"ID: {cow_id}")
 
                         painter.restore()
 
@@ -105,11 +128,12 @@ class CowTrackerApp(QMainWindow):
                 scaled_pixmap = pixmap.scaled(
                     self.image_placeholder.size(),
                     Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
+                    Qt.TransformationMode.SmoothTransformation,
                 )
                 self.image_placeholder.setPixmap(scaled_pixmap)
                 self.setWindowTitle(
-                    f"Cattle Tracklet Merge Assistant - Frame: {value} / {self.time_slider.maximum()}")
+                    f"Cattle Tracklet Merge Assistant - Frame: {value} / {self.time_slider.maximum()}"
+                )
 
             # Parse XML
             if os.path.exists(xml_path):
@@ -123,7 +147,7 @@ class CowTrackerApp(QMainWindow):
 
         if zip_files:
             if not temp_xml_dir.exists() or not any(temp_xml_dir.iterdir()):
-                with zipfile.ZipFile(zip_files[0], 'r') as zip_ref:
+                with zipfile.ZipFile(zip_files[0], "r") as zip_ref:
                     zip_ref.extractall(temp_xml_dir)
 
         paired_dataset = []
@@ -133,11 +157,13 @@ class CowTrackerApp(QMainWindow):
         for jpg_path in img_paths:
             file_base_name = jpg_path.stem
             if file_base_name in xml_dict:
-                paired_dataset.append({
-                    "frame_name": file_base_name,
-                    "image_path": str(jpg_path),
-                    "xml_path": str(xml_dict[file_base_name])
-                })
+                paired_dataset.append(
+                    {
+                        "frame_name": file_base_name,
+                        "image_path": str(jpg_path),
+                        "xml_path": str(xml_dict[file_base_name]),
+                    }
+                )
 
         return paired_dataset
 
@@ -146,20 +172,26 @@ class CowTrackerApp(QMainWindow):
         try:
             tree = xmlET.parse(xml_path)
             root = tree.getroot()
-            for obj in root.findall('object'):
-                cow_id = obj.find('name').text if obj.find(
-                    'name') is not None else "Unknown"
-                robndbox = obj.find('robndbox')
+            for obj in root.findall("object"):
+                cow_id = (
+                    obj.find("name").text if obj.find("name") is not None else "Unknown"
+                )
+                robndbox = obj.find("robndbox")
                 if robndbox is not None:
-                    angle_rad = float(robndbox.find('angle').text)
-                    cow_boxes.append({
-                        "id": cow_id,
-                        "cx": float(robndbox.find('cx').text),
-                        "cy": float(robndbox.find('cy').text),
-                        "w": float(robndbox.find('w').text),
-                        "h": float(robndbox.find('h').text),
-                        "angle": math.degrees(angle_rad)
-                    })
+                    # XML stores angle in radians
+                    angle_rad = float(
+                        robndbox.find("angle").text
+                    )
+                    cow_boxes.append(
+                        {
+                            "id": cow_id,
+                            "cx": float(robndbox.find("cx").text),
+                            "cy": float(robndbox.find("cy").text),
+                            "w": float(robndbox.find("w").text),
+                            "h": float(robndbox.find("h").text),
+                            "angle": math.degrees(angle_rad),
+                        }
+                    )
         except Exception as e:
             print(f"Error parsing XML: {e}")
 
