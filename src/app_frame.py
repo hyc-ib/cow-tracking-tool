@@ -6,15 +6,15 @@ Folder structure expected:
     └── frames/
         └── <20250910T054951_20250910T061053>/
             └── <20250910T054951_20250910T061053_frame_0050>.jpg
-    └── <camera1>_xml.zip
+    └── <1camera>-json.zip
 """
 
 import sys
 import os
-import math
+import json
 import zipfile
+import re
 from pathlib import Path
-import xml.etree.ElementTree as xmlET
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -26,8 +26,8 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QSizePolicy,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont
+from PyQt6.QtCore import Qt, QPointF
+from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont, QPolygonF
 
 
 class CowTrackerApp(QMainWindow):
@@ -88,13 +88,13 @@ class CowTrackerApp(QMainWindow):
         if self.dataset and value < len(self.dataset):
             frame_data = self.dataset[value]
             img_path = frame_data["image_path"]
-            xml_path = frame_data["xml_path"]
+            json_path = frame_data["json_path"]
 
             # Show Image
             if os.path.exists(img_path):
                 pixmap = QPixmap(img_path)
-                if os.path.exists(xml_path):
-                    cow_boxes = self.parse_cow_xml(xml_path)
+                if os.path.exists(json_path):
+                    cow_boxes = self.parse_cow_json(json_path)
 
                     painter = QPainter(pixmap)
                     pen_box = QPen(QColor(0, 255, 0))
@@ -102,26 +102,26 @@ class CowTrackerApp(QMainWindow):
                     font_text = QFont("Arial", 16, QFont.Weight.Bold)
 
                     for cow in cow_boxes:
-                        cx, cy = cow["cx"], cow["cy"]
-                        w, h = cow["w"], cow["h"]
-                        angle = cow["angle"]
+                        pts = cow["points"]
                         cow_id = cow["id"]
 
-                        painter.save()
-                        painter.translate(cx, cy)
-                        painter.rotate(angle)
+                        if len(pts) != 4:
+                            continue
+
+                        pyqt_points = [QPointF(p[0], p[1]) for p in pts]
+                        polygon = QPolygonF(pyqt_points)
 
                         # green box
                         painter.setPen(pen_box)
                         painter.setBrush(Qt.BrushStyle.NoBrush)
-                        painter.drawRect(int(-w / 2), int(-h / 2), int(w), int(h))
+                        painter.drawPolygon(polygon)
 
                         # yellow ID
                         painter.setPen(QColor(255, 255, 0))
                         painter.setFont(font_text)
-                        painter.drawText(int(-w / 2), int(-h / 2) - 10, f"ID: {cow_id}")
-
-                        painter.restore()
+                        painter.drawText(
+                            int(pts[0][0]), int(pts[0][1]) - 10, f"ID: {cow_id}"
+                        )
 
                     painter.end()
 
@@ -135,65 +135,61 @@ class CowTrackerApp(QMainWindow):
                     f"Cattle Tracklet Merge Assistant - Frame: {value} / {self.time_slider.maximum()}"
                 )
 
-            # Parse XML
-            if os.path.exists(xml_path):
-                cow_boxes = self.parse_cow_xml(xml_path)
-                # print(f"Current Frame {value}, Cows count: {len(cow_boxes)}")
-
     def parse_folder(self, folder_path):
         base_path = Path(folder_path)
-        zip_files = list(base_path.glob("*xml.zip"))
-        temp_xml_dir = base_path / "temp_xml_extracted"
+        zip_files = list(base_path.glob("*json.zip"))
+        temp_json_dir = base_path / "temp_json_extracted"
 
         if zip_files:
-            if not temp_xml_dir.exists() or not any(temp_xml_dir.iterdir()):
+            if not temp_json_dir.exists() or not any(temp_json_dir.iterdir()):
                 with zipfile.ZipFile(zip_files[0], "r") as zip_ref:
-                    zip_ref.extractall(temp_xml_dir)
+                    zip_ref.extractall(temp_json_dir)
+
+        json_files = []
+        if temp_json_dir.exists():
+            json_files = list(temp_json_dir.rglob("*.json"))
+
+        json_dict = {}
+        for j in json_files:
+            match = re.search(r"(.*)_frame_(\d+)", j.stem)
+            if match:
+                json_dict[(match.group(1), int(match.group(2)))] = j
 
         paired_dataset = []
         img_paths = sorted(list(base_path.glob("frames/**/*.jpg")))
-        xml_paths_in_temp = list(temp_xml_dir.rglob("*.xml"))
-        xml_dict = {x.stem: x for x in xml_paths_in_temp}
+
         for jpg_path in img_paths:
-            file_base_name = jpg_path.stem
-            if file_base_name in xml_dict:
-                paired_dataset.append(
-                    {
-                        "frame_name": file_base_name,
-                        "image_path": str(jpg_path),
-                        "xml_path": str(xml_dict[file_base_name]),
-                    }
-                )
+            match = re.search(r"(.*)_frame_(\d+)", jpg_path.stem)
+            if match:
+                # match file name and frame number
+                key = (match.group(1), int(match.group(2)))
+                if key in json_dict:
+                    paired_dataset.append(
+                        {
+                            "frame_name": jpg_path.stem,
+                            "image_path": str(jpg_path),
+                            "json_path": str(json_dict[key]),
+                        }
+                    )
 
         return paired_dataset
 
-    def parse_cow_xml(self, xml_path):
+    def parse_cow_json(self, json_path):
         cow_boxes = []
         try:
-            tree = xmlET.parse(xml_path)
-            root = tree.getroot()
-            for obj in root.findall("object"):
-                cow_id = (
-                    obj.find("name").text if obj.find("name") is not None else "Unknown"
-                )
-                robndbox = obj.find("robndbox")
-                if robndbox is not None:
-                    # XML stores angle in radians
-                    angle_rad = float(
-                        robndbox.find("angle").text
-                    )
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            for shape in data.get("shapes", []):
+                if shape.get("label") == "cow":
                     cow_boxes.append(
                         {
-                            "id": cow_id,
-                            "cx": float(robndbox.find("cx").text),
-                            "cy": float(robndbox.find("cy").text),
-                            "w": float(robndbox.find("w").text),
-                            "h": float(robndbox.find("h").text),
-                            "angle": math.degrees(angle_rad),
+                            "id": shape.get("group_id", "Unknown"),
+                            "points": shape.get("points", []),
                         }
                     )
         except Exception as e:
-            print(f"Error parsing XML: {e}")
+            print(f"Error parsing JSON: {e}")
 
         return cow_boxes
 
