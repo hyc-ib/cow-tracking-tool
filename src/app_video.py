@@ -3,16 +3,23 @@ Cattle Tracklet Merge Assistant (Video Edition)
 
 Folder structure expected:
   <camera1>_mask/
+    └── frames/
+        └── <20250910T054951_20250910T061053>/
+            └── <20250910T054951_20250910T061053_frame_0050>.jpg
+            └── <20250910T054951_20250910T061053_frame_0075>.jpg
+        └── <20250910T061053_20250910T063156>/
+            └── <20250910T061053_20250910T063156_frame_0025>.jpg
+            └── <20250910T061053_20250910T063156_frame_0050>.jpg
     ├── <20250910T054951_20250910T061053>.mp4
-    └── <camera1>_xml.zip
+    ├── <20250910T061053_20250910T063156>.mp4
+    └── <1camera>-json.zip
 """
 
 import sys
-import re
-import math
+import json
 import zipfile
+import re
 from pathlib import Path
-import xml.etree.ElementTree as xmlET
 import cv2
 from PyQt6.QtWidgets import (
     QApplication,
@@ -28,8 +35,17 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QLineEdit,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont, QImage, QIntValidator
+from PyQt6.QtCore import Qt, QPointF
+from PyQt6.QtGui import (
+    QPixmap,
+    QPainter,
+    QPen,
+    QColor,
+    QFont,
+    QImage,
+    QIntValidator,
+    QPolygonF,
+)
 
 
 class VideoFrameProvider:
@@ -72,18 +88,20 @@ class CowTrackerApp(QMainWindow):
         super().__init__()
 
         self.video_provider = VideoFrameProvider()
-        self.xml_dict = {}
+        self.json_dict = {}
         self.base_folder_path = None
-        self.temp_xml_dir = None
+        self.temp_json_dir = None
 
         # Window
         self.setWindowTitle("Cattle Tracklet Merge Assistant — Video Edition")
         self.setGeometry(100, 100, 1000, 700)
+
+        # Widget
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
 
-        # Top bar
+        # Top Bar
         top_bar = QHBoxLayout()
         self.btn_open = QPushButton("Open Folder")
         self.btn_open.setStyleSheet(
@@ -114,7 +132,7 @@ class CowTrackerApp(QMainWindow):
         )
         main_layout.addWidget(self.image_label, stretch=4)
 
-        # Bottom bar
+        # Bottom Bar
         bottom_bar = QHBoxLayout()
         self.lbl_frame = QLabel("Frame: —")
         self.lbl_frame.setStyleSheet("font-size: 13px; color: #333;")
@@ -135,31 +153,30 @@ class CowTrackerApp(QMainWindow):
         bottom_bar.addStretch()
         main_layout.addLayout(bottom_bar)
 
-        # Timeline slider
+        # Time Slider
         self.time_slider = QSlider(Qt.Orientation.Horizontal)
         self.time_slider.valueChanged.connect(self.slider_changed)
         main_layout.addWidget(self.time_slider, stretch=1)
 
     def select_folder(self):
-        folder_path = QFileDialog.getExistingDirectory(self, "Open Folder")
-        if not folder_path:
-            return
+        folder_path = QFileDialog.getExistingDirectory(self, "Open")
 
-        self.base_folder_path = Path(folder_path)
-        self.temp_xml_dir = self.base_folder_path / "temp_xml_extracted"
+        if folder_path:
+            self.base_folder_path = Path(folder_path)
+            self.temp_json_dir = self.base_folder_path / "temp_json_extracted"
 
-        # extract XML from zip
-        zip_files = list(self.base_folder_path.glob("*xml.zip"))
-        if zip_files:
-            if not self.temp_xml_dir.exists() or not any(self.temp_xml_dir.iterdir()):
-                with zipfile.ZipFile(zip_files[0], "r") as zip_ref:
-                    zip_ref.extractall(self.temp_xml_dir)
+            # extract JSON from zip
+            zip_files = list(self.base_folder_path.glob("*json.zip"))
+            if zip_files:
+                if not self.temp_json_dir.exists() or not any(
+                    self.temp_json_dir.iterdir()
+                ):
+                    with zipfile.ZipFile(zip_files[0], "r") as zip_ref:
+                        zip_ref.extractall(self.temp_json_dir)
 
         # sorted all mp4 files
         mp4_files = sorted(list(self.base_folder_path.glob("*.mp4")))
-
         if not mp4_files:
-            self.image_label.setText("No .mp4 files found in this folder!")
             return
 
         # populate video combo box
@@ -183,56 +200,83 @@ class CowTrackerApp(QMainWindow):
 
         self.int_validator.setTop(self.video_provider.total_frames - 1)
         self.time_slider.setMaximum(self.video_provider.total_frames - 1)
-        self.xml_dict.clear()
+        self.json_dict.clear()
         video_stem = video_path.stem
 
-        # load XML files and pair them with video frames
-        xml_paths = (
-            list(self.temp_xml_dir.rglob("*.xml")) if self.temp_xml_dir.exists() else []
+        # load JSON files and pair them with video frames
+        json_paths = (
+            list(self.temp_json_dir.rglob("*.json"))
+            if self.temp_json_dir.exists()
+            else []
         )
-        if not xml_paths:
-            xml_paths = list(self.base_folder_path.glob("*.xml"))
+        if not json_paths:
+            json_paths = list(self.base_folder_path.glob("*.json"))
 
-        # pair XML files with video frames based on naming rules
-        for xml_path in xml_paths:
-            if video_stem in xml_path.stem:
-                match = re.search(r"frame_(\d+)", xml_path.stem)
+        # pair JSON files with video frames based on naming rules
+        for json_path in json_paths:
+            if video_stem in json_path.stem:
+                match = re.search(r"frame_(\d+)", json_path.stem)
                 if match:
                     frame_num = int(match.group(1))
-                    self.xml_dict[frame_num] = xml_path
+                    self.json_dict[frame_num] = json_path
 
         # reset slider
         self.time_slider.setValue(0)
         self.slider_changed(0)
+
+    def parse_cow_json(self, json_path):
+        cow_boxes = []
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            for shape in data.get("shapes", []):
+                if shape.get("label") == "cow":
+                    cow_boxes.append(
+                        {
+                            "id": shape.get("group_id", "Unknown"),
+                            "points": shape.get("points", []),
+                        }
+                    )
+        except Exception as e:
+            print(f"Error parsing JSON: {e}")
+
+        return cow_boxes
 
     def slider_changed(self, video_frame_no: int):
         pixmap = self.video_provider.get_frame(video_frame_no)
         if pixmap is None:
             return
 
-        # paint bounding boxes if XML exists for this frame
-        if video_frame_no in self.xml_dict:
-            boxes = self.parse_cow_xml(str(self.xml_dict[video_frame_no]))
+        # paint bounding boxes if JSON exists for this frame
+        if video_frame_no in self.json_dict:
+            boxes = self.parse_cow_json(str(self.json_dict[video_frame_no]))
 
             painter = QPainter(pixmap)
             pen_box = QPen(QColor(0, 255, 0))
             pen_box.setWidth(4)
-            painter.setPen(pen_box)
-            painter.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+            font_text = QFont("Arial", 16, QFont.Weight.Bold)
 
             for cow in boxes:
-                painter.save()
-                painter.translate(cow["cx"], cow["cy"])
-                painter.rotate(cow["angle"])
+                pts = cow["points"]
+                cow_id = cow["id"]
+
+                if len(pts) != 4:
+                    continue
+
+                pyqt_points = [QPointF(p[0], p[1]) for p in pts]
+                polygon = QPolygonF(pyqt_points)
+
+                # green box
+                painter.setPen(pen_box)
                 painter.setBrush(Qt.BrushStyle.NoBrush)
-                painter.drawRect(
-                    int(-cow["w"] / 2), int(-cow["h"] / 2), int(cow["w"]), int(cow["h"])
-                )
+                painter.drawPolygon(polygon)
+
+                # yellow ID
                 painter.setPen(QColor(255, 255, 0))
-                painter.drawText(
-                    int(-cow["w"] / 2), int(-cow["h"] / 2) - 10, f"ID: {cow['id']}"
-                )
-                painter.restore()
+                painter.setFont(font_text)
+                painter.drawText(int(pts[0][0]), int(pts[0][1]) - 10, f"ID: {cow_id}")
+
             painter.end()
 
         scaled = pixmap.scaled(
@@ -261,33 +305,6 @@ class CowTrackerApp(QMainWindow):
 
             self.input_frame.clear()
             self.input_frame.clearFocus()
-
-    def parse_cow_xml(self, xml_path: str) -> list:
-        cow_boxes = []
-        try:
-            tree = xmlET.parse(xml_path)
-            root = tree.getroot()
-            for obj in root.findall("object"):
-                cow_id = (
-                    obj.find("name").text if obj.find("name") is not None else "Unknown"
-                )
-                robndbox = obj.find("robndbox")
-                if robndbox is not None:
-                    angle_rad = float(robndbox.find("angle").text)
-                    cow_boxes.append(
-                        {
-                            "id": cow_id,
-                            "cx": float(robndbox.find("cx").text),
-                            "cy": float(robndbox.find("cy").text),
-                            "w": float(robndbox.find("w").text),
-                            "h": float(robndbox.find("h").text),
-                            "angle": math.degrees(angle_rad),
-                        }
-                    )
-        except Exception as e:
-            print(f"Error parsing XML: {e}")
-
-        return cow_boxes
 
 
 if __name__ == "__main__":
