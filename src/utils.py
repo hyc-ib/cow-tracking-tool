@@ -3,6 +3,7 @@ Geometry and Coordinate Helper Functions for Cattle Tracking Tool.
 """
 
 import math
+import json
 from PyQt6.QtCore import Qt, QPointF
 from PyQt6.QtGui import QPolygonF
 
@@ -48,3 +49,29 @@ def hit_test(ix, iy, cow_boxes):
             ):
                 return i
     return -1
+
+
+def save_cow_json(json_path, cow_boxes):
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Create a lookup dictionary of group_id -> points for modified cow boxes
+        cow_lookup = {str(box["id"]): box["points"] for box in cow_boxes}
+
+        modified = False
+        for shape in data.get("shapes", []):
+            if shape.get("label") == "cow":
+                group_id = str(shape.get("group_id", "Unknown"))
+                if group_id in cow_lookup:
+                    shape["points"] = cow_lookup[group_id]
+                    modified = True
+
+        if modified:
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            return True
+    except Exception as e:
+        print(f"Error saving JSON: {e}")
+        return False
+    return False

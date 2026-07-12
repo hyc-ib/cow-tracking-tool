@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QComboBox,
     QLineEdit,
+    QMessageBox,
 )
 from PyQt6.QtCore import Qt, QPointF
 from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont, QIntValidator
@@ -80,6 +81,8 @@ class CowTrackerApp(QMainWindow):
         self.drag_start_img = None
         self.drag_start_points = None
         self.is_dragging = False
+        self.has_unsaved_changes = False
+        self.current_index = 0
 
         # Display state
         self.original_pixmap = None
@@ -150,7 +153,7 @@ class CowTrackerApp(QMainWindow):
         bottom_bar.addStretch()
 
         self.lbl_hint = QLabel(
-            "Click: select | Drag: move | Left/Right: rotate 1 degree | Shift+Left/Right: 5 degrees"
+            "Click: select | Drag: move | Left/Right: rotate 1 degree | Shift+Left/Right: 5 degrees | Ctrl+S: Save"
         )
         self.lbl_hint.setStyleSheet("font-size: 11px; color: #888;")
         bottom_bar.addSpacing(20)
@@ -186,9 +189,15 @@ class CowTrackerApp(QMainWindow):
             # Translate selected box relative to drag start
             ddx = ix - self.drag_start_img.x()
             ddy = iy - self.drag_start_img.y()
-            self.cow_boxes[self.selected_cow_idx]["points"] = [
-                [p[0] + ddx, p[1] + ddy] for p in self.drag_start_points
-            ]
+
+            # Check if actual translation happened to set dirty state
+            if ddx != 0 or ddy != 0:
+                self.cow_boxes[self.selected_cow_idx]["points"] = [
+                    [p[0] + ddx, p[1] + ddy] for p in self.drag_start_points
+                ]
+                if not self.has_unsaved_changes:
+                    self.has_unsaved_changes = True
+
             self.image_label.setCursor(Qt.CursorShape.ClosedHandCursor)
             self.render_frame()
         else:
@@ -207,8 +216,16 @@ class CowTrackerApp(QMainWindow):
         self.drag_start_points = None
         self.image_label.setCursor(Qt.CursorShape.ArrowCursor)
 
-    # ---Keyboard: arrow key rotation---
+    # ---Keyboard: arrow key rotation & Ctrl+S saving---
     def keyPressEvent(self, event):
+        # Handle Ctrl+S saving
+        if (
+            event.key() == Qt.Key.Key_S
+            and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ):
+            self.save_current_frame()
+            return
+
         if self.selected_cow_idx < 0:
             super().keyPressEvent(event)
             return
@@ -220,14 +237,71 @@ class CowTrackerApp(QMainWindow):
             self.cow_boxes[self.selected_cow_idx]["points"] = utils.rotate_points(
                 self.cow_boxes[self.selected_cow_idx]["points"], -angle
             )
+            self.has_unsaved_changes = True
             self.render_frame()
         elif event.key() == Qt.Key.Key_Right:
             self.cow_boxes[self.selected_cow_idx]["points"] = utils.rotate_points(
                 self.cow_boxes[self.selected_cow_idx]["points"], angle
             )
+            self.has_unsaved_changes = True
             self.render_frame()
         else:
             super().keyPressEvent(event)
+
+    # ---Save handler---
+    def save_current_frame(self):
+        if not self.has_unsaved_changes or self.current_index >= len(
+            self.current_frames
+        ):
+            return
+
+        frame_data = self.current_frames[self.current_index]
+        json_path = frame_data["json_path"]
+
+        if not json_path or not os.path.exists(json_path):
+            QMessageBox.warning(
+                self, "Save Failed", "No JSON annotation file exists for this frame."
+            )
+            return
+
+        success = utils.save_cow_json(json_path, self.cow_boxes)
+        if success:
+            self.has_unsaved_changes = False
+            self.render_frame()
+        else:
+            QMessageBox.critical(
+                self, "Save Failed", "Could not write changes back to the JSON file."
+            )
+
+    def closeEvent(self, event):
+        if self.maybe_save_changes():
+            event.accept()
+        else:
+            event.ignore()
+
+    def maybe_save_changes(self) -> bool:
+        if not self.has_unsaved_changes:
+            return True
+
+        reply = QMessageBox.question(
+            self,
+            "Unsaved Changes",
+            "You have unsaved changes in this frame. Would you like to save them?",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
+        )
+
+        if reply == QMessageBox.StandardButton.Save:
+            self.save_current_frame()
+            return not self.has_unsaved_changes
+        elif reply == QMessageBox.StandardButton.Discard:
+            self.has_unsaved_changes = False
+            return True
+        else:
+            # Cancel
+            return False
 
     # ---Rendering---
     def render_frame(self):
@@ -283,7 +357,20 @@ class CowTrackerApp(QMainWindow):
         )
         self.image_label.setPixmap(scaled_pixmap)
 
+        # Update title with unsaved changes flag '*'
+        selected_timestamp = self.combo_timestamp.currentText()
+        real_frame = self.current_frames[self.current_index]["frame_number"]
+        unsaved_flag = "*" if self.has_unsaved_changes else ""
+        self.setWindowTitle(
+            f"Cattle Tracklet Merge Assistant{unsaved_flag} - [{selected_timestamp}]"
+            f" - Frame: {real_frame} ({self.current_index}/{self.time_slider.maximum()})"
+        )
+
+    # ---Data loading---
     def select_folder(self):
+        if not self.maybe_save_changes():
+            return
+
         folder_path = QFileDialog.getExistingDirectory(self, "Open")
 
         if folder_path:
@@ -317,6 +404,11 @@ class CowTrackerApp(QMainWindow):
                 self.timestamp_changed(0)
 
     def timestamp_changed(self, index):
+        if index >= 0 and self.combo_timestamp.signalsBlocked():
+            pass
+        elif not self.maybe_save_changes():
+            return
+
         selected_timestamp = self.combo_timestamp.currentText()
         if not selected_timestamp or not self.base_folder_path:
             return
@@ -378,9 +470,21 @@ class CowTrackerApp(QMainWindow):
         return cow_boxes
 
     def slider_changed(self, value):
+        if self.has_unsaved_changes:
+            self.time_slider.blockSignals(True)
+            accepted = self.maybe_save_changes()
+            self.time_slider.blockSignals(False)
+            if not accepted:
+                # Restore previous slider value
+                self.time_slider.blockSignals(True)
+                self.time_slider.setValue(self.current_index)
+                self.time_slider.blockSignals(False)
+                return
+
         if not (self.current_frames and value < len(self.current_frames)):
             return
 
+        self.current_index = value
         frame_data = self.current_frames[value]
         img_path = frame_data["image_path"]
         json_path = frame_data["json_path"]
@@ -400,14 +504,9 @@ class CowTrackerApp(QMainWindow):
             # Reset selection on frame change
             self.selected_cow_idx = -1
             self.is_dragging = False
+            self.has_unsaved_changes = False
 
             self.render_frame()
-
-            selected_timestamp = self.combo_timestamp.currentText()
-            self.setWindowTitle(
-                f"Cattle Tracklet Merge Assistant - [{selected_timestamp}]"
-                f" - Frame: {real_frame} ({value}/{self.time_slider.maximum()})"
-            )
 
     def jump_to_frame(self):
         target_str = self.input_frame.text()
