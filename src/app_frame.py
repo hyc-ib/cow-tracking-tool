@@ -110,6 +110,9 @@ class CowTrackerApp(QMainWindow):
         top_bar.addWidget(QLabel("Select Timestamp:"))
         self.combo_timestamp = QComboBox()
         self.combo_timestamp.setMinimumWidth(300)
+        self.combo_timestamp.setFocusPolicy(
+            Qt.FocusPolicy.NoFocus
+        )  # Prevent grabbing keyboard focus
         self.combo_timestamp.currentIndexChanged.connect(self.timestamp_changed)
         top_bar.addWidget(self.combo_timestamp)
 
@@ -153,7 +156,7 @@ class CowTrackerApp(QMainWindow):
         bottom_bar.addStretch()
 
         self.lbl_hint = QLabel(
-            "Click: select | Drag: move | Left/Right: rotate 1 degree | Shift+Left/Right: 5 degrees | Ctrl+S: Save"
+            "A/D: Prev/Next Frame | Click: Select | Drag: Move | Left/Right: Rotate 1 degree | Shift+Left/Right: Rotate 5 degrees | Ctrl+S: Save"
         )
         self.lbl_hint.setStyleSheet("font-size: 11px; color: #888;")
         bottom_bar.addSpacing(20)
@@ -163,11 +166,19 @@ class CowTrackerApp(QMainWindow):
 
         # Time Slider
         self.time_slider = QSlider(Qt.Orientation.Horizontal)
+        self.time_slider.setFocusPolicy(
+            Qt.FocusPolicy.NoFocus
+        )  # Prevent grabbing keyboard focus and intercepting arrows
         self.time_slider.valueChanged.connect(self.slider_changed)
         main_layout.addWidget(self.time_slider, stretch=1)
 
+        # Set main window focus policy
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFocus()
+
     # ---Mouse event handlers---
     def _on_mouse_press(self, dx, dy):
+        self.setFocus()
         ix, iy = utils.display_to_image(dx, dy, self.display_offset, self.display_scale)
         hit = utils.hit_test(ix, iy, self.cow_boxes)
         self.selected_cow_idx = hit
@@ -218,7 +229,7 @@ class CowTrackerApp(QMainWindow):
 
     # ---Keyboard: arrow key rotation & Ctrl+S saving---
     def keyPressEvent(self, event):
-        # Handle Ctrl+S saving
+        # Ctrl+S: saving
         if (
             event.key() == Qt.Key.Key_S
             and event.modifiers() & Qt.KeyboardModifier.ControlModifier
@@ -226,20 +237,33 @@ class CowTrackerApp(QMainWindow):
             self.save_current_frame()
             return
 
+        # A: Previous Frame
+        if event.key() == Qt.Key.Key_A:
+            if self.current_index > 0:
+                self.time_slider.setValue(self.current_index - 1)
+            return
+
+        # D: Next Frame
+        if event.key() == Qt.Key.Key_D:
+            if self.current_index < len(self.current_frames) - 1:
+                self.time_slider.setValue(self.current_index + 1)
+            return
+
         if self.selected_cow_idx < 0:
             super().keyPressEvent(event)
             return
 
+        key = event.key()
         shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
         angle = 5.0 if shift else 1.0
 
-        if event.key() == Qt.Key.Key_Left:
+        if key == Qt.Key.Key_Left:
             self.cow_boxes[self.selected_cow_idx]["points"] = utils.rotate_points(
                 self.cow_boxes[self.selected_cow_idx]["points"], -angle
             )
             self.has_unsaved_changes = True
             self.render_frame()
-        elif event.key() == Qt.Key.Key_Right:
+        elif key == Qt.Key.Key_Right:
             self.cow_boxes[self.selected_cow_idx]["points"] = utils.rotate_points(
                 self.cow_boxes[self.selected_cow_idx]["points"], angle
             )
