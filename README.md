@@ -1,20 +1,8 @@
 # cow-tracking-tool
 COMSM3201_2025_AYEAR
 
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 1. app_frame.py (Annotation & Refinement Station)                        │
-├──────────────────────────────────────────────────────────────────────────┤
-│  • Navigate frames using A / D hotkeys                                   │
-│  • Inspect & correct ID swaps using the Pattern Matching Tool            │
-│  • Fine-tune bounding box positions, rotation angles, & box detections   │
-│  • Auto-save cleaned JSON annotation files                               │
-└────────────────────────────────────┬─────────────────────────────────────┘
-                                     │
-                                     ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 2. app_video.py (Visualization & Review Station)                         │
-├──────────────────────────────────────────────────────────────────────────┤
-│  • Load cleaned JSON annotation files                                    │
-│  • Automatically run interpolation_engine to generate dense 25 FPS paths │
-│  • Smooth video playback for final outcome verification                  │
-└──────────────────────────────────────────────────────────────────────────┘
+| Stage | Module | Key Features |
+| :--- | :--- | :--- |
+| **01. Refine** | **`app_frame.py`**<br>*(Annotation Station)* | • Navigate frames using `A` / `D` hotkeys<br>• Inspect & correct ID swaps using **Pattern Matching Tool**<br>• Fine-tune bounding box positions, angles, & detections<br>• Auto-save cleaned JSON annotation files |
+| **↓** | | *Outputs Cleaned JSON Annotations* |
+| **02. Review** | **`app_video.py`**<br>*(Visualization Station)* | • Load cleaned JSON annotation files<br>• Automatically run `interpolation_engine` for dense **25 FPS** paths<br>• Smooth video playback for final outcome verification |
