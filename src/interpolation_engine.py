@@ -79,7 +79,7 @@ def smooth_angles(angles, window_size=11):
     return smoothed_angles
 
 
-def generate_dense_cache(sparse_json_dict, parse_json_func, total_frames, fps=25.0):
+def generate_dense_cache(sparse_json_dict, parse_json_func, total_frames, fps):
     # 1. Group tracklets by cow ID
     cow_tracks = {}
     for f_no, json_path in sorted(sparse_json_dict.items()):
@@ -96,7 +96,7 @@ def generate_dense_cache(sparse_json_dict, parse_json_func, total_frames, fps=25
             cow_tracks[cow_id][f_no] = params
 
     dense_cache = {f: [] for f in range(total_frames)}
-    max_gap = int(fps * 1.5)
+    max_gap = int(fps * 2.5)
     smoothing_window = 11
 
     # 2. Interpolate and Smooth

@@ -12,40 +12,45 @@ Folder structure expected:
             └── <20250910T061053_20250910T063156_frame_0050>.jpg
     ├── <20250910T054951_20250910T061053>.mp4
     ├── <20250910T061053_20250910T063156>.mp4
-    └── <1camera>-json.zip
+    ├── <1camera>-json.zip
+    └── <2025Sep18>.tar.gz
 """
 
-import sys
+import argparse
 import json
-import zipfile
 import re
+import sys
+import zipfile
 from pathlib import Path
+
 import cv2
-from PyQt6.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QSlider,
-    QLabel,
-    QPushButton,
-    QFileDialog,
-    QSizePolicy,
-    QComboBox,
-    QLineEdit,
-)
-from PyQt6.QtCore import Qt, QPointF
+from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import (
-    QPixmap,
-    QPainter,
-    QPen,
     QColor,
     QFont,
     QImage,
     QIntValidator,
+    QPainter,
+    QPen,
+    QPixmap,
     QPolygonF,
 )
+from PyQt6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QPushButton,
+    QSizePolicy,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
+)
+
+import interpolation_engine
 
 
 class VideoFrameProvider:
@@ -67,7 +72,26 @@ class VideoFrameProvider:
     def get_frame(self, frame_no: int):
         if not self.cap or not self.cap.isOpened():
             return None
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
+
+        current_pos = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+
+        if frame_no == current_pos:
+            pass
+        elif frame_no > current_pos and frame_no - current_pos <= 30:
+            # Sequential read for small forward jumps
+            for _ in range(frame_no - current_pos):
+                self.cap.read()
+        else:
+            seek_target = max(0, frame_no - 30)
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, seek_target)
+
+            actual_pos = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+            if actual_pos <= frame_no:
+                for _ in range(frame_no - actual_pos):
+                    self.cap.read()
+            else:
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
+
         ret, frame = self.cap.read()
         if not ret:
             return None
@@ -84,17 +108,19 @@ class VideoFrameProvider:
 
 
 class CowTrackerApp(QMainWindow):
-    def __init__(self):
+    def __init__(self, annotation_fps: float = 16.2):
         super().__init__()
 
+        self.annotation_fps = annotation_fps
         self.video_provider = VideoFrameProvider()
         self.json_dict = {}
+        self.dense_cow_boxes = {}
         self.base_folder_path = None
         self.temp_json_dir = None
 
         # Window
         self.setWindowTitle("Cattle Tracklet Merge Assistant — Video Edition")
-        self.setGeometry(100, 100, 1000, 700)
+        self.setMinimumSize(900, 600)
 
         # Widget
         main_widget = QWidget()
@@ -114,6 +140,7 @@ class CowTrackerApp(QMainWindow):
         top_bar.addWidget(QLabel("Select Video:"))
         self.combo_video = QComboBox()
         self.combo_video.setMinimumWidth(300)
+        self.combo_video.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.combo_video.currentIndexChanged.connect(self.video_changed)
         top_bar.addWidget(self.combo_video)
 
@@ -155,8 +182,15 @@ class CowTrackerApp(QMainWindow):
 
         # Time Slider
         self.time_slider = QSlider(Qt.Orientation.Horizontal)
+        self.time_slider.setFocusPolicy(
+            Qt.FocusPolicy.NoFocus
+        )  # Prevent grabbing keyboard focus
         self.time_slider.valueChanged.connect(self.slider_changed)
         main_layout.addWidget(self.time_slider, stretch=1)
+
+        # Set main window focus policy
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFocus()
 
     def select_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Open")
@@ -167,26 +201,25 @@ class CowTrackerApp(QMainWindow):
 
             # extract JSON from zip
             zip_files = list(self.base_folder_path.glob("*json.zip"))
-            if zip_files:
-                if not self.temp_json_dir.exists() or not any(
-                    self.temp_json_dir.iterdir()
-                ):
-                    with zipfile.ZipFile(zip_files[0], "r") as zip_ref:
-                        zip_ref.extractall(self.temp_json_dir)
+            if zip_files and (not self.temp_json_dir.exists() or not any(
+                self.temp_json_dir.iterdir()
+            )):
+                with zipfile.ZipFile(zip_files[0], "r") as zip_ref:
+                    zip_ref.extractall(self.temp_json_dir)
 
-        # sorted all mp4 files
-        mp4_files = sorted(list(self.base_folder_path.glob("*.mp4")))
-        if not mp4_files:
-            return
+            # Sort all mp4 files in the folder
+            mp4_files = sorted(self.base_folder_path.glob("*.mp4"))
+            if not mp4_files:
+                return
 
-        # populate video combo box
-        self.combo_video.blockSignals(True)
-        self.combo_video.clear()
-        for mp4 in mp4_files:
-            self.combo_video.addItem(mp4.name, mp4)
-        self.combo_video.blockSignals(False)
-        self.combo_video.setCurrentIndex(0)  # default to first video
-        self.video_changed(0)
+            # populate video combo box
+            self.combo_video.blockSignals(True)
+            self.combo_video.clear()
+            for mp4 in mp4_files:
+                self.combo_video.addItem(mp4.name, mp4)
+            self.combo_video.blockSignals(False)
+            self.combo_video.setCurrentIndex(0)  # default to first video
+            self.video_changed(0)
 
     def video_changed(self, index):
         if index < 0:
@@ -201,6 +234,7 @@ class CowTrackerApp(QMainWindow):
         self.int_validator.setTop(self.video_provider.total_frames - 1)
         self.time_slider.setMaximum(self.video_provider.total_frames - 1)
         self.json_dict.clear()
+        self.dense_cow_boxes.clear()
         video_stem = video_path.stem
 
         # load JSON files and pair them with video frames
@@ -212,19 +246,41 @@ class CowTrackerApp(QMainWindow):
         if not json_paths:
             json_paths = list(self.base_folder_path.glob("*.json"))
 
-        # pair JSON files with video frames based on naming rules
+        # pair JSON files with video frames by aligning annotation time with video time
+        video_fps = self.video_provider.fps
         for json_path in json_paths:
             if video_stem in json_path.stem:
                 match = re.search(r"frame_(\d+)", json_path.stem)
                 if match:
-                    frame_num = int(match.group(1))
-                    self.json_dict[frame_num] = json_path
+                    json_frame_num = int(match.group(1))
+                    # Map JSON frame number (at annotation_fps) to actual video frame number (at video_fps)
+                    time_sec = json_frame_num / self.annotation_fps
+                    actual_video_frame = round(time_sec * video_fps)
+                    self.json_dict[actual_video_frame] = json_path
+
+        # Generate dense smoothed interpolated tracklets
+        if self.json_dict:
+            self.dense_cow_boxes = interpolation_engine.generate_dense_cache(
+                self.json_dict,
+                self._parse_cow_json,
+                self.video_provider.total_frames,
+                fps=video_fps,
+            )
 
         # reset slider
         self.time_slider.setValue(0)
         self.slider_changed(0)
+        self._update_title()
 
-    def parse_cow_json(self, json_path):
+    def _update_title(self):
+        video_fps = self.video_provider.fps
+        self.setWindowTitle(
+            f"Cattle Tracklet Merge Assistant — Video Edition"
+            f"  |  Video FPS: {video_fps:.1f}"
+            f"  |  Annotation FPS: {self.annotation_fps:.1f}"
+        )
+
+    def _parse_cow_json(self, json_path):
         cow_boxes = []
         try:
             with open(json_path, "r", encoding="utf-8") as f:
@@ -248,10 +304,9 @@ class CowTrackerApp(QMainWindow):
         if pixmap is None:
             return
 
-        # paint bounding boxes if JSON exists for this frame
-        if video_frame_no in self.json_dict:
-            boxes = self.parse_cow_json(str(self.json_dict[video_frame_no]))
-
+        # Paint bounding boxes from the pre-computed smoothed dense cache
+        boxes = self.dense_cow_boxes.get(video_frame_no, [])
+        if boxes:
             painter = QPainter(pixmap)
             pen_box = QPen(QColor(0, 255, 0))
             pen_box.setWidth(4)
@@ -285,9 +340,8 @@ class CowTrackerApp(QMainWindow):
             Qt.TransformationMode.SmoothTransformation,
         )
         self.image_label.setPixmap(scaled)
-        current_fps = self.video_provider.fps
         self.lbl_frame.setText(
-            f"Frame: {video_frame_no:,} / {self.video_provider.total_frames:,}  |  🎬 FPS: {current_fps:.1f}"
+            f"Frame: {video_frame_no:,} / {self.video_provider.total_frames:,}"
         )
 
     def jump_to_frame(self):
@@ -308,7 +362,18 @@ class CowTrackerApp(QMainWindow):
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = CowTrackerApp()
-    window.show()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--fps",
+        "-fps",
+        type=float,
+        default=16.2,  # JSON files' FPS
+        metavar="FPS",
+        help="Annotation FPS of the source dataset",
+    )
+    args = parser.parse_args()
+
+    app = QApplication(sys.argv[:1])
+    window = CowTrackerApp(annotation_fps=args.fps)
+    window.showMaximized()
     sys.exit(app.exec())
