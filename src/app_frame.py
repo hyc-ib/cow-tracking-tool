@@ -21,18 +21,20 @@ import re
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QSlider,
-    QLabel,
-    QPushButton,
-    QFileDialog,
-    QSizePolicy,
     QComboBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
     QLineEdit,
+    QMainWindow,
     QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
 )
 from PyQt6.QtCore import Qt, QPointF
 from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont, QIntValidator
@@ -75,14 +77,20 @@ class CowTrackerApp(QMainWindow):
         self.base_folder_path = None
         self.temp_json_dir = None
 
-        # Editing state
+        # Edit mode state
         self.cow_boxes = []
         self.selected_cow_idx = -1  # nothing selected
         self.drag_start_img = None
         self.drag_start_points = None
         self.is_dragging = False
         self.drag_happened = False
-        self.current_index = 0
+        self.current_idx = 0
+        self.pending_cow_id = None
+
+        # Draw mode state
+        self.draw_mode = False
+        self.draw_start_img = None
+        self.draw_preview_pts = None
 
         # Display state
         self.original_pixmap = None
@@ -90,7 +98,7 @@ class CowTrackerApp(QMainWindow):
         self.display_offset = QPointF(0, 0)
 
         self.setWindowTitle("Cattle Tracklet Merge Assistant - Frame Edition")
-        self.setGeometry(100, 100, 1000, 700)
+        self.setMinimumSize(900, 600)
 
         # Widget
         main_widget = QWidget()
@@ -115,6 +123,40 @@ class CowTrackerApp(QMainWindow):
         )  # Prevent grabbing keyboard focus
         self.combo_timestamp.currentIndexChanged.connect(self.timestamp_changed)
         top_bar.addWidget(self.combo_timestamp)
+
+        # Vertical separator
+        top_sep = QFrame()
+        top_sep.setFrameShape(QFrame.Shape.VLine)
+        top_sep.setStyleSheet("color: #ccc;")
+        top_bar.addSpacing(8)
+        top_bar.addWidget(top_sep)
+        top_bar.addSpacing(8)
+
+        self.btn_draw = QPushButton("New Box [N]")
+        self.btn_draw.setCheckable(True)
+        self.btn_draw.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_draw.setStyleSheet(
+            "QPushButton { font-size: 13px; padding: 6px 14px; border-radius: 4px;"
+            " background-color: #005088; color: white; }"
+            "QPushButton:checked { background-color: #c06000; }"
+        )
+        self.btn_draw.clicked.connect(self.toggle_draw_mode)
+        top_bar.addWidget(self.btn_draw)
+
+        top_bar.addSpacing(6)
+        self.btn_delete = QPushButton("Delete [Del]")
+        self.btn_delete.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_delete.setStyleSheet(
+            "font-size: 13px; padding: 6px 14px; border-radius: 4px;"
+            " background-color: #aa0000; color: white;"
+        )
+        self.btn_delete.clicked.connect(self.delete_selected_box)
+        top_bar.addWidget(self.btn_delete)
+
+        top_bar.addSpacing(12)
+        self.lbl_tool_status = QLabel("")
+        self.lbl_tool_status.setStyleSheet("font-size: 11px; color: #666;")
+        top_bar.addWidget(self.lbl_tool_status)
 
         top_bar.addStretch()
         main_layout.addLayout(top_bar)
@@ -180,6 +222,11 @@ class CowTrackerApp(QMainWindow):
     def _on_mouse_press(self, dx, dy):
         self.setFocus()
         ix, iy = utils.display_to_image(dx, dy, self.display_offset, self.display_scale)
+
+        if self.draw_mode:
+            self.draw_start_img = (ix, iy)
+            return
+
         hit = utils.hit_test(ix, iy, self.cow_boxes)
         self.selected_cow_idx = hit
 
@@ -191,10 +238,18 @@ class CowTrackerApp(QMainWindow):
         else:
             self.is_dragging = False
 
-        self.render_frame()
+        self._render_frame()
 
     def _on_mouse_move(self, dx, dy, is_pressed):
         ix, iy = utils.display_to_image(dx, dy, self.display_offset, self.display_scale)
+
+        if self.draw_mode:
+            self.image_label.setCursor(Qt.CursorShape.CrossCursor)
+            if is_pressed and self.draw_start_img is not None:
+                x0, y0 = self.draw_start_img
+                self.draw_preview_pts = [[x0, y0], [ix, y0], [ix, iy], [x0, iy]]
+                self._render_frame()
+            return
 
         if self.is_dragging and is_pressed and self.selected_cow_idx >= 0:
             # Translate selected box relative to drag start
@@ -208,7 +263,7 @@ class CowTrackerApp(QMainWindow):
                 self.drag_happened = True
 
             self.image_label.setCursor(Qt.CursorShape.ClosedHandCursor)
-            self.render_frame()
+            self._render_frame()
         else:
             # Hover cursor update
             hit = utils.hit_test(ix, iy, self.cow_boxes)
@@ -220,26 +275,45 @@ class CowTrackerApp(QMainWindow):
                 self.image_label.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def _on_mouse_release(self):
+        if self.draw_mode:
+            if self.draw_start_img is not None and self.draw_preview_pts is not None:
+                cow_id = self.pending_cow_id
+                self.cow_boxes.append({"id": cow_id, "points": self.draw_preview_pts})
+                self._save_current_frame()
+                self.lbl_tool_status.setText(f"\u2713 Added ID {cow_id}")
+            self._exit_draw_mode()  # clears preview, pending_cow_id, and re-renders
+            return
+
         self.is_dragging = False
         self.drag_start_img = None
         self.drag_start_points = None
         self.image_label.setCursor(Qt.CursorShape.ArrowCursor)
         if self.drag_happened:
             self.drag_happened = False
-            self.save_current_frame()
+            self._save_current_frame()
 
-    # ---Keyboard: arrow key rotation---
+    # ---Keyboard shortcuts---
     def keyPressEvent(self, event):
+        # N: Toggle draw mode
+        if event.key() == Qt.Key.Key_N:
+            self.toggle_draw_mode()
+            return
+
+        # Del: Remove selected box
+        if event.key() == Qt.Key.Key_Delete:
+            self.delete_selected_box()
+            return
+
         # A: Previous Frame
         if event.key() == Qt.Key.Key_A:
-            if self.current_index > 0:
-                self.time_slider.setValue(self.current_index - 1)
+            if self.current_idx > 0:
+                self.time_slider.setValue(self.current_idx - 1)
             return
 
         # D: Next Frame
         if event.key() == Qt.Key.Key_D:
-            if self.current_index < len(self.current_frames) - 1:
-                self.time_slider.setValue(self.current_index + 1)
+            if self.current_idx < len(self.current_frames) - 1:
+                self.time_slider.setValue(self.current_idx + 1)
             return
 
         if self.selected_cow_idx < 0:
@@ -254,30 +328,79 @@ class CowTrackerApp(QMainWindow):
             self.cow_boxes[self.selected_cow_idx]["points"] = utils.rotate_points(
                 self.cow_boxes[self.selected_cow_idx]["points"], -angle
             )
-            self.render_frame()
-            self.save_current_frame()
+            self._render_frame()
+            self._save_current_frame()
         elif key == Qt.Key.Key_Right:
             self.cow_boxes[self.selected_cow_idx]["points"] = utils.rotate_points(
                 self.cow_boxes[self.selected_cow_idx]["points"], angle
             )
-            self.render_frame()
-            self.save_current_frame()
+            self._render_frame()
+            self._save_current_frame()
         else:
             super().keyPressEvent(event)
 
-    # ---Save handler---
-    def save_current_frame(self):
-        if self.current_index >= len(self.current_frames):
+    # ---Draw mode helpers---
+    def toggle_draw_mode(self):
+        if self.draw_mode:
+            self._exit_draw_mode()
             return
 
-        frame_data = self.current_frames[self.current_index]
+        # Ask for the cow ID before entering draw mode
+        cow_id_text, ok = QInputDialog.getText(
+            self, "New Bounding Box", "Enter Cow ID:"
+        )
+        if not ok or not cow_id_text.strip():
+            self.btn_draw.setChecked(False)
+            return
+
+        raw = cow_id_text.strip()
+        try:
+            self.pending_cow_id = int(raw)
+        except ValueError:
+            self.pending_cow_id = raw
+
+        self.draw_mode = True
+        self.draw_preview_pts = None
+        self.draw_start_img = None
+        self.selected_cow_idx = -1
+        self.image_label.setCursor(Qt.CursorShape.CrossCursor)
+        self.btn_draw.setChecked(True)
+        self.lbl_tool_status.setText(
+            f"Drawing ID {self.pending_cow_id} — drag to place box"
+        )
+        self._render_frame()
+
+    def _exit_draw_mode(self):
+        self.draw_mode = False
+        self.draw_preview_pts = None
+        self.draw_start_img = None
+        self.pending_cow_id = None
+        self.image_label.setCursor(Qt.CursorShape.ArrowCursor)
+        self.btn_draw.setChecked(False)
+        self._render_frame()
+
+    def delete_selected_box(self):
+        if self.selected_cow_idx < 0 or self.selected_cow_idx >= len(self.cow_boxes):
+            return
+        self.cow_boxes.pop(self.selected_cow_idx)
+        self.selected_cow_idx = -1
+        self._save_current_frame()
+        self._render_frame()
+
+    # ---Save handler---
+    def _save_current_frame(self):
+        if self.current_idx >= len(self.current_frames):
+            return
+
+        frame_data = self.current_frames[self.current_idx]
         json_path = frame_data["json_path"]
 
+        # Create a skeleton JSON file if it doesn't exist
         if not json_path or not os.path.exists(json_path):
-            QMessageBox.warning(
-                self, "Save Failed", "No JSON annotation file exists for this frame."
-            )
-            return
+            json_path = self._create_json_for_frame(frame_data)
+            if not json_path:
+                return
+            self.current_frames[self.current_idx]["json_path"] = json_path
 
         success = utils.save_cow_json(json_path, self.cow_boxes)
         if not success:
@@ -285,8 +408,40 @@ class CowTrackerApp(QMainWindow):
                 self, "Save Failed", "Could not write changes back to the JSON file."
             )
 
+    def _create_json_for_frame(self, frame_data: dict) -> str:
+        if not self.temp_json_dir:
+            QMessageBox.warning(self, "Save Failed", "No annotation directory is set.")
+            return ""
+
+        self.temp_json_dir.mkdir(parents=True, exist_ok=True)
+
+        img_basename = os.path.basename(frame_data["image_path"])
+        json_stem = os.path.splitext(img_basename)[0]  # strip .jpg
+        json_path = str(self.temp_json_dir / f"{json_stem}.json")
+
+        img_w = self.original_pixmap.width() if self.original_pixmap else 0
+        img_h = self.original_pixmap.height() if self.original_pixmap else 0
+
+        skeleton = {
+            "version": "5.0.0",
+            "flags": {},
+            "shapes": [],
+            "imagePath": img_basename,
+            "imageData": None,
+            "imageHeight": img_h,
+            "imageWidth": img_w,
+        }
+
+        try:
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(skeleton, f, indent=2, ensure_ascii=False)
+            return json_path
+        except Exception as e:
+            QMessageBox.warning(self, "Save Failed", f"Could not create JSON: {e}")
+            return ""
+
     # ---Rendering---
-    def render_frame(self):
+    def _render_frame(self):
         if self.original_pixmap is None:
             return
 
@@ -313,6 +468,15 @@ class CowTrackerApp(QMainWindow):
             painter.setPen(QColor(255, 255, 0))
             painter.setFont(font_text)
             painter.drawText(int(pts[0][0]), int(pts[0][1]) - 10, f"ID: {cow['id']}")
+
+        # Draw preview rectangle (draw mode)
+        if self.draw_preview_pts and len(self.draw_preview_pts) == 4:
+            pen_preview = QPen(QColor(0, 120, 255))
+            pen_preview.setWidth(2)
+            pen_preview.setStyle(Qt.PenStyle.DashLine)
+            painter.setPen(pen_preview)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPolygon(utils.polygon_from_points(self.draw_preview_pts))
 
         painter.end()
 
@@ -341,10 +505,10 @@ class CowTrackerApp(QMainWindow):
 
         # Update window title
         selected_timestamp = self.combo_timestamp.currentText()
-        real_frame = self.current_frames[self.current_index]["frame_number"]
+        real_frame = self.current_frames[self.current_idx]["frame_number"]
         self.setWindowTitle(
             f"Cattle Tracklet Merge Assistant - [{selected_timestamp}]"
-            f" - Frame: {real_frame} ({self.current_index}/{self.time_slider.maximum()})"
+            f" - Frame: {real_frame} ({self.current_idx}/{self.time_slider.maximum()})"
         )
 
     # ---Data loading---
@@ -407,7 +571,6 @@ class CowTrackerApp(QMainWindow):
                 frame_no = int(match.group(1))
                 self.current_frames.append(
                     {
-                        "frame_name": jpg_path.stem,
                         "image_path": str(jpg_path),
                         "json_path": json_dict.get(frame_no, ""),
                         "frame_number": frame_no,
@@ -422,7 +585,7 @@ class CowTrackerApp(QMainWindow):
             self.time_slider.setValue(0)
             self.slider_changed(0)
 
-    def parse_cow_json(self, json_path):
+    def _parse_cow_json(self, json_path):
         cow_boxes = []
         try:
             with open(json_path, "r", encoding="utf-8") as f:
@@ -445,7 +608,7 @@ class CowTrackerApp(QMainWindow):
         if not (self.current_frames and value < len(self.current_frames)):
             return
 
-        self.current_index = value
+        self.current_idx = value
         frame_data = self.current_frames[value]
         img_path = frame_data["image_path"]
         json_path = frame_data["json_path"]
@@ -458,16 +621,17 @@ class CowTrackerApp(QMainWindow):
 
             # Load and store editable cow boxes
             if json_path and os.path.exists(json_path):
-                self.cow_boxes = self.parse_cow_json(json_path)
+                self.cow_boxes = self._parse_cow_json(json_path)
             else:
                 self.cow_boxes = []
 
-            # Reset selection on frame change
+            # Reset selection and status on frame change
             self.selected_cow_idx = -1
             self.is_dragging = False
             self.drag_happened = False
+            self.lbl_tool_status.setText("")
 
-            self.render_frame()
+            self._render_frame()
 
     def jump_to_frame(self):
         target_str = self.input_frame.text()
@@ -487,5 +651,5 @@ class CowTrackerApp(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = CowTrackerApp()
-    window.show()
+    window.showMaximized()
     sys.exit(app.exec())
