@@ -9,40 +9,28 @@ Credits:
     Modified and optimized for 10x performance upgrade
 """
 
-import os
-import cv2
 import subprocess
 from pathlib import Path
 
+SOURCE_FPS = 16
+
 
 def extract_frames_as_jpg(video_root, output_root):
-    os.makedirs(output_root, exist_ok=True)
+    Path(output_root).mkdir(parents=True, exist_ok=True)
     video_files = list(Path(video_root).rglob("*.mp4"))
 
     if not video_files:
-        print(f"Not found any .mp4 files in {video_root}")
+        print(f"No .mp4 files found in {video_root}")
         return
 
     for i, video_path in enumerate(video_files):
         video_name = video_path.stem
-        print(f"[{i + 1}/{len(video_files)}] Processing video: {video_name}")
+        print(f"[{i + 1}/{len(video_files)}] Processing: {video_name}")
 
-        # Open the video file
-        cap = cv2.VideoCapture(str(video_path))
-        if not cap.isOpened():
-            print(f"Failed to open video: {video_path}")
-            continue
+        current_save_dir = Path(output_root) / video_name
+        current_save_dir.mkdir(parents=True, exist_ok=True)
 
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps <= 0:
-            fps = 25  # default to 25 if unable to get fps
-
-        # Calculate the frame interval to extract one frame per second
-        frame_interval = int(fps)
-        current_save_dir = os.path.join(output_root, video_name)
-        os.makedirs(current_save_dir, exist_ok=True)
-
-        temp_pattern = os.path.join(current_save_dir, "temp_%06d.jpg")
+        temp_pattern = str(current_save_dir / "temp_%06d.jpg")
         cmd = [
             "ffmpeg",
             "-i",
@@ -50,29 +38,29 @@ def extract_frames_as_jpg(video_root, output_root):
             "-vf",
             "fps=1",
             "-q:v",
-            "2",  # 2 means QUALITY=95
-            "-y",  # overwrite output files if they exist
-            temp_pattern,  # e.g., temp_000001.jpg
+            "2",  # quality about 95%
+            "-y",  # overwrite if exists
+            temp_pattern,
         ]
 
-        subprocess.run(
-            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
-        )
+        try:
+            subprocess.run(
+                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
+            )
+        except subprocess.CalledProcessError:
+            print(f"  ffmpeg failed on: {video_path}")
+            continue
 
-        # naming rule: temp_000001.jpg -> XXX_frame_000025.jpg
-        temp_files = sorted(list(Path(current_save_dir).glob("temp_*.jpg")))
+        # Rename temp_000001.jpg → {video_name}_frame_{N:06d}.jpg
+        temp_files = sorted(current_save_dir.glob("temp_*.jpg"))
         for idx, temp_file in enumerate(temp_files):
-            second_idx = idx + 1
-            actual_frame_no = second_idx * frame_interval
+            actual_frame_no = idx * SOURCE_FPS
             new_name = (
-                Path(current_save_dir) / f"{video_name}_frame_{actual_frame_no:06d}.jpg"
+                current_save_dir / f"{video_name}_frame_{actual_frame_no:06d}.jpg"
             )
             temp_file.rename(new_name)
 
-        saved_count = len(temp_files)
-
-        cap.release()
-        print(f"Completed. {saved_count} JPG images saved to: {current_save_dir}")
+        print(f"  Done. {len(temp_files)} frames saved to: {current_save_dir}")
 
 
 if __name__ == "__main__":
@@ -81,9 +69,4 @@ if __name__ == "__main__":
     static_ffmpeg.add_paths()
 
     current_dir = Path(__file__).parent.resolve()
-    video_folder = str(current_dir)
-    frame_folder = str(current_dir / "frames")
-
-    # QUALITY = 95
-    # extract_frames_as_jpg(video_folder, frame_folder, jpg_quality=QUALITY)
-    extract_frames_as_jpg(video_folder, frame_folder)
+    extract_frames_as_jpg(str(current_dir), str(current_dir / "frames"))

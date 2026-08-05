@@ -2,9 +2,10 @@
 Geometry and Coordinate Helper Functions for Cattle Tracking Tool.
 """
 
-import math
 import json
-from PyQt6.QtCore import Qt, QPointF
+import math
+
+from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QPolygonF
 
 
@@ -43,11 +44,10 @@ def rotate_points(pts, angle_deg):
 def hit_test(ix, iy, cow_boxes):
     pt = QPointF(ix, iy)
     for i, cow in enumerate(cow_boxes):
-        if len(cow["points"]) == 4:
-            if polygon_from_points(cow["points"]).containsPoint(
-                pt, Qt.FillRule.OddEvenFill
-            ):
-                return i
+        if len(cow["points"]) == 4 and polygon_from_points(cow["points"]).containsPoint(
+            pt, Qt.FillRule.OddEvenFill
+        ):
+            return i
     return -1
 
 
@@ -56,22 +56,45 @@ def save_cow_json(json_path, cow_boxes):
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        # Create a lookup dictionary of group_id -> points for modified cow boxes
+        # Build lookups
         cow_lookup = {str(box["id"]): box["points"] for box in cow_boxes}
 
-        modified = False
-        for shape in data.get("shapes", []):
-            if shape.get("label") == "cow":
-                group_id = str(shape.get("group_id", "Unknown"))
-                if group_id in cow_lookup:
-                    shape["points"] = cow_lookup[group_id]
-                    modified = True
+        # Track which IDs already exist in JSON
+        existing_ids_in_json = {
+            str(s.get("group_id", ""))
+            for s in data.get("shapes", [])
+            if s.get("label") == "cow"
+        }
 
-        if modified:
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            return True
+        # Update or Delete existing shapes
+        updated_shapes = []
+        for shape in data.get("shapes", []):
+            if shape.get("label") != "cow":
+                updated_shapes.append(shape)  # preserve non-cow shapes
+                continue
+            gid = str(shape.get("group_id", ""))
+            if gid in cow_lookup:
+                shape["points"] = cow_lookup[gid]
+                updated_shapes.append(shape)
+            # else: this cow was deleted (omit it)
+
+        # Append brand-new cows not yet in the JSON
+        for box in cow_boxes:
+            if str(box["id"]) not in existing_ids_in_json:
+                updated_shapes.append(
+                    {
+                        "label": "cow",
+                        "points": box["points"],
+                        "group_id": box["id"],
+                        "shape_type": "polygon",
+                        "flags": {},
+                    }
+                )
+
+        data["shapes"] = updated_shapes
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        return True
     except Exception as e:
         print(f"Error saving JSON: {e}")
         return False
-    return False

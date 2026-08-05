@@ -13,12 +13,15 @@ Folder structure expected:
     └── <1camera>-json.zip
 """
 
-import sys
-import os
 import json
-import zipfile
+import os
 import re
+import sys
+import zipfile
 from pathlib import Path
+
+from PyQt6.QtCore import QPointF, Qt
+from PyQt6.QtGui import QColor, QFont, QIntValidator, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -36,8 +39,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PyQt6.QtCore import Qt, QPointF
-from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont, QIntValidator
 
 import utils
 
