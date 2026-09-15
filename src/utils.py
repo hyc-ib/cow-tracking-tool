@@ -6,7 +6,51 @@ import json
 import math
 
 from PyQt6.QtCore import QPointF, Qt
-from PyQt6.QtGui import QPolygonF
+from PyQt6.QtGui import QPainter, QPixmap, QPolygonF, QTransform
+
+
+def crop_and_derotate_bbox(pixmap, points, force_horizontal=True):
+    if not pixmap or len(points) != 4:
+        return None
+
+    x0, y0 = points[0]
+    x1, y1 = points[1]
+    x2, y2 = points[2]
+
+    cx = sum(p[0] for p in points) / 4.0
+    cy = sum(p[1] for p in points) / 4.0
+    w = math.hypot(x1 - x0, y1 - y0)
+    h = math.hypot(x2 - x1, y2 - y1)
+
+    if w < 1 or h < 1:
+        return None
+
+    theta_rad = math.atan2(y1 - y0, x1 - x0)
+    theta_deg = math.degrees(theta_rad)
+
+    # Ensure the longest dimension (cow body length) is aligned horizontally
+    if force_horizontal and h > w:
+        theta_deg += 90.0
+        w, h = h, w
+
+    crop_w = max(1, round(w))
+    crop_h = max(1, round(h))
+
+    cropped = QPixmap(crop_w, crop_h)
+    cropped.fill(Qt.GlobalColor.transparent)
+
+    painter = QPainter(cropped)
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+    painter.setTransform(
+        QTransform()
+        .translate(crop_w / 2.0, crop_h / 2.0)
+        .rotate(-theta_deg)
+        .translate(-cx, -cy)
+    )
+    painter.drawPixmap(0, 0, pixmap)
+    painter.end()
+
+    return cropped
 
 
 def display_to_image(dx, dy, display_offset, display_scale):
