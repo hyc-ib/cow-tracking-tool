@@ -2,22 +2,43 @@
 Cattle Tracklet Merge Assistant (Frame Edition)
 
 Folder structure expected:
-  <camera1>/
-    └── frames/
-        └── <20250910T054951_20250910T061053>/
-            └── <20250910T054951_20250910T061053_frame_0050>.jpg
-            └── <20250910T054951_20250910T061053_frame_0075>.jpg
-        └── <20250910T061053_20250910T063156>/
-            └── <20250910T061053_20250910T063156_frame_0025>.jpg
-            └── <20250910T061053_20250910T063156_frame_0050>.jpg
-    └── <1camera>-json.zip
+  image_all/
+    └── <128>/
+        └── <20250910T054822_20250910T060922>/
+            └── <20250910T054822_20250910T060922_frame_1350>.jpg
+            └── <20250910T054822_20250910T060922_frame_4125>.jpg
+        └── <20250910T060922_20250910T063022>/
+            └── <20250910T060922_20250910T063022_frame_0475>.jpg
+            └── <20250910T060922_20250910T063022_frame_1000>.jpg
+    └── <133>/
+        └── <20250910T060058_20250910T062151>/
+            └── <20250910T060058_20250910T062151_frame_0125>.jpg
+            └── <20250910T060058_20250910T062151_frame_0275>.jpg
+        └── <20250910T100443_20250910T102601>/
+            └── <20250910T100443_20250910T102601_frame_0650>.jpg
+            └── <20250910T100443_20250910T102601_frame_0950>.jpg
+
+  json/
+    └── <128>camera_json/
+        └── <20250910T054822_20250910T060922>/
+            └── <20250910T054822_20250910T060922_frame_0425>.json
+            └── <20250910T054822_20250910T060922_frame_0475>.json
+        └── <20250910T060922_20250910T063022>/
+            └── <20250910T060922_20250910T063022_frame_0375>.json
+            └── <20250910T060922_20250910T063022_frame_0775>.json
+    └── <133>camera_json/
+        └── <20250910T082911_20250910T085330>/
+            └── <20250910T082911_20250910T085330_frame_0200>.json
+            └── <20250910T082911_20250910T085330_frame_0875>.json
+        └── <20250910T100443_20250910T102601>/
+            └── <20250910T100443_20250910T102601_frame_0275>.json
+            └── <20250910T100443_20250910T102601_frame_0900>.json
 """
 
 import json
 import os
 import re
 import sys
-import zipfile
 from pathlib import Path
 
 from PyQt6.QtCore import QPointF, Qt
@@ -34,6 +55,7 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSlider,
     QVBoxLayout,
@@ -70,13 +92,44 @@ class ClickableLabel(QLabel):
             self._on_release()
 
 
+class AnomalySlider(QSlider):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.anomaly_indices = []  # list of slider indices (0 to max)
+
+    def set_anomalies(self, indices):
+        self.anomaly_indices = indices
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self.anomaly_indices or self.maximum() <= 0:
+            return
+
+        painter = QPainter(self)
+        painter.setPen(QPen(QColor(255, 0, 0, 200), 2))
+
+        margin = 6
+        width = self.width() - 2 * margin
+        height = self.height()
+
+        for idx in self.anomaly_indices:
+            ratio = idx / self.maximum()
+            x = margin + int(ratio * width)
+            painter.drawLine(x, 2, x, height // 2 - 2)
+
+        painter.end()
+
+
 class CowTrackerApp(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.current_frames = []
-        self.base_folder_path = None
-        self.temp_json_dir = None
+        self.json_session_dir = None  # path to the selected JSON session folder
+        self._session_name = ""
+        self._image_root_dir: Path | None = None
+        self._json_root_dir: Path | None = None
 
         # Edit mode state
         self.cow_boxes = []
@@ -98,6 +151,9 @@ class CowTrackerApp(QMainWindow):
         self.display_scale = 1.0  # image_pixels / display_pixel
         self.display_offset = QPointF(0, 0)
 
+        # Anomaly state
+        self.current_anomalies = {}  # {frame_number: description}
+
         self.setWindowTitle("Cattle Tracklet Merge Assistant - Frame Edition")
         self.setMinimumSize(900, 600)
 
@@ -108,22 +164,39 @@ class CowTrackerApp(QMainWindow):
 
         # Top Bar
         top_bar = QHBoxLayout()
-        self.btn_open = QPushButton("Open Folder")
-        self.btn_open.setStyleSheet(
-            "font-size: 14px; padding: 8px 18px;"
-            "background-color: #005088; color: white; border-radius: 5px;"
+        self.btn_set_img_root = QPushButton("Image Folder")
+        self.btn_set_img_root.setStyleSheet(
+            "font-size: 12px; padding: 6px 12px; background-color: #005088; color: white; border-radius: 4px;"
         )
-        self.btn_open.clicked.connect(self.select_folder)
-        top_bar.addWidget(self.btn_open)
+        self.btn_set_img_root.clicked.connect(self.set_image_root)
+        top_bar.addWidget(self.btn_set_img_root)
 
-        top_bar.addWidget(QLabel("Select Timestamp:"))
-        self.combo_timestamp = QComboBox()
-        self.combo_timestamp.setMinimumWidth(300)
-        self.combo_timestamp.setFocusPolicy(
-            Qt.FocusPolicy.NoFocus
-        )  # Prevent grabbing keyboard focus
-        self.combo_timestamp.currentIndexChanged.connect(self.timestamp_changed)
-        top_bar.addWidget(self.combo_timestamp)
+        self.btn_set_json_root = QPushButton("JSON Folder")
+        self.btn_set_json_root.setStyleSheet(
+            "font-size: 12px; padding: 6px 12px; background-color: #005088; color: white; border-radius: 4px;"
+        )
+        self.btn_set_json_root.clicked.connect(self.set_json_root)
+        top_bar.addWidget(self.btn_set_json_root)
+
+        top_bar.addWidget(QLabel("Camera:"))
+        self.combo_camera = QComboBox()
+        self.combo_camera.setMinimumWidth(80)
+        self.combo_camera.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.combo_camera.currentIndexChanged.connect(self.camera_changed)
+        top_bar.addWidget(self.combo_camera)
+
+        top_bar.addWidget(QLabel("Session:"))
+        self.combo_session = QComboBox()
+        self.combo_session.setMinimumWidth(250)
+        self.combo_session.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.combo_session.currentIndexChanged.connect(self.session_changed)
+        top_bar.addWidget(self.combo_session)
+
+        self.lbl_session_info = QLabel("")
+        self.lbl_session_info.setStyleSheet(
+            "font-size: 11px; color: #888; font-style: italic;"
+        )
+        top_bar.addWidget(self.lbl_session_info)
 
         # Vertical separator
         top_sep = QFrame()
@@ -160,6 +233,14 @@ class CowTrackerApp(QMainWindow):
         top_bar.addWidget(self.lbl_tool_status)
 
         top_bar.addStretch()
+
+        # Anomaly status label on the right
+        self.lbl_anomaly_info = QLabel("")
+        self.lbl_anomaly_info.setStyleSheet(
+            "font-size: 13px; color: #d00000; font-weight: bold;"
+        )
+        top_bar.addWidget(self.lbl_anomaly_info)
+
         main_layout.addLayout(top_bar)
 
         # Image display area
@@ -179,11 +260,63 @@ class CowTrackerApp(QMainWindow):
         )
         main_layout.addWidget(self.image_label, stretch=4)
 
+        # Coat Pattern Viewer Panel
+        self.strip_container = QFrame()
+        self.strip_container.setFrameShape(QFrame.Shape.StyledPanel)
+        self.strip_container.setStyleSheet(
+            "QFrame { background-color: #1e1e24; border-radius: 6px; border: 1px solid #2d2d3a; }"
+        )
+        strip_vbox = QVBoxLayout(self.strip_container)
+        strip_vbox.setContentsMargins(10, 6, 10, 6)
+        strip_vbox.setSpacing(4)
+
+        # Header
+        self.lbl_strip_header = QLabel(
+            "Coat Pattern Viewer — Select a cow box to inspect sequence"
+        )
+        self.lbl_strip_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_strip_header.setStyleSheet(
+            "color: #b0b0ba; font-size: 12px; font-weight: bold;"
+        )
+        strip_vbox.addWidget(self.lbl_strip_header)
+
+        # Scroll Area for thumbnails
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFixedHeight(95)
+        scroll_area.setStyleSheet(
+            "QScrollArea { border: none; background: transparent; }"
+        )
+
+        scroll_content = QWidget()
+        scroll_content.setStyleSheet("background: transparent;")
+        self.strip_layout = QHBoxLayout(scroll_content)
+        self.strip_layout.setContentsMargins(0, 0, 0, 0)
+        self.strip_layout.setSpacing(8)
+
+        scroll_area.setWidget(scroll_content)
+        strip_vbox.addWidget(scroll_area)
+
+        # Add placeholder card UI widgets
+        self.strip_card_widgets = []
+        self._init_strip_placeholders()
+
+        main_layout.addWidget(self.strip_container, stretch=0)
+
         # Bottom Bar
         bottom_bar = QHBoxLayout()
         self.lbl_frame = QLabel("Frame: —")
         self.lbl_frame.setStyleSheet("font-size: 13px; color: #333;")
         bottom_bar.addWidget(self.lbl_frame)
+        bottom_bar.addSpacing(15)
+
+        self.btn_next_issue = QPushButton("Next Issue [F]")
+        self.btn_next_issue.setStyleSheet(
+            "font-size: 12px; padding: 4px 10px; background-color: #d00000; color: white; border-radius: 4px;"
+        )
+        self.btn_next_issue.clicked.connect(self.jump_to_next_issue)
+        bottom_bar.addWidget(self.btn_next_issue)
+
         bottom_bar.addSpacing(30)
         bottom_bar.addWidget(QLabel("Go to Frame:"))
 
@@ -208,7 +341,7 @@ class CowTrackerApp(QMainWindow):
         main_layout.addLayout(bottom_bar)
 
         # Time Slider
-        self.time_slider = QSlider(Qt.Orientation.Horizontal)
+        self.time_slider = AnomalySlider(Qt.Orientation.Horizontal)
         self.time_slider.setFocusPolicy(
             Qt.FocusPolicy.NoFocus
         )  # Prevent grabbing keyboard focus and intercepting arrows
@@ -239,6 +372,7 @@ class CowTrackerApp(QMainWindow):
         else:
             self.is_dragging = False
 
+        self._update_strip_header()
         self._render_frame()
 
     def _on_mouse_move(self, dx, dy, is_pressed):
@@ -264,6 +398,7 @@ class CowTrackerApp(QMainWindow):
                 self.drag_happened = True
 
             self.image_label.setCursor(Qt.CursorShape.ClosedHandCursor)
+            self._update_strip_header()
             self._render_frame()
         else:
             # Hover cursor update
@@ -295,7 +430,7 @@ class CowTrackerApp(QMainWindow):
 
     # ---Keyboard shortcuts---
     def keyPressEvent(self, event):
-        # N: Toggle draw mode
+        # N: Draw new box
         if event.key() == Qt.Key.Key_N:
             self.toggle_draw_mode()
             return
@@ -317,6 +452,11 @@ class CowTrackerApp(QMainWindow):
                 self.time_slider.setValue(self.current_idx + 1)
             return
 
+        # F: Jump to next issue
+        if event.key() == Qt.Key.Key_F:
+            self.jump_to_next_issue()
+            return
+
         if self.selected_cow_idx < 0:
             super().keyPressEvent(event)
             return
@@ -331,12 +471,14 @@ class CowTrackerApp(QMainWindow):
             )
             self._render_frame()
             self._save_current_frame()
+            self._update_strip_header()
         elif key == Qt.Key.Key_Right:
             self.cow_boxes[self.selected_cow_idx]["points"] = utils.rotate_points(
                 self.cow_boxes[self.selected_cow_idx]["points"], angle
             )
             self._render_frame()
             self._save_current_frame()
+            self._update_strip_header()
         else:
             super().keyPressEvent(event)
 
@@ -346,7 +488,6 @@ class CowTrackerApp(QMainWindow):
             self._exit_draw_mode()
             return
 
-        # Ask for the cow ID before entering draw mode
         cow_id_text, ok = QInputDialog.getText(
             self, "New Bounding Box", "Enter Cow ID:"
         )
@@ -369,6 +510,7 @@ class CowTrackerApp(QMainWindow):
         self.lbl_tool_status.setText(
             f"Drawing ID {self.pending_cow_id} — drag to place box"
         )
+        self._update_strip_header()
         self._render_frame()
 
     def _exit_draw_mode(self):
@@ -378,6 +520,7 @@ class CowTrackerApp(QMainWindow):
         self.pending_cow_id = None
         self.image_label.setCursor(Qt.CursorShape.ArrowCursor)
         self.btn_draw.setChecked(False)
+        self._update_strip_header()
         self._render_frame()
 
     def delete_selected_box(self):
@@ -386,6 +529,7 @@ class CowTrackerApp(QMainWindow):
         self.cow_boxes.pop(self.selected_cow_idx)
         self.selected_cow_idx = -1
         self._save_current_frame()
+        self._update_strip_header()
         self._render_frame()
 
     # ---Save handler---
@@ -410,15 +554,15 @@ class CowTrackerApp(QMainWindow):
             )
 
     def _create_json_for_frame(self, frame_data: dict) -> str:
-        if not self.temp_json_dir:
+        if not self.json_session_dir:
             QMessageBox.warning(self, "Save Failed", "No annotation directory is set.")
             return ""
 
-        self.temp_json_dir.mkdir(parents=True, exist_ok=True)
+        self.json_session_dir.mkdir(parents=True, exist_ok=True)
 
         img_basename = os.path.basename(frame_data["image_path"])
         json_stem = os.path.splitext(img_basename)[0]  # strip .jpg
-        json_path = str(self.temp_json_dir / f"{json_stem}.json")
+        json_path = str(self.json_session_dir / f"{json_stem}.json")
 
         img_w = self.original_pixmap.width() if self.original_pixmap else 0
         img_h = self.original_pixmap.height() if self.original_pixmap else 0
@@ -505,71 +649,140 @@ class CowTrackerApp(QMainWindow):
         self.image_label.setPixmap(scaled_pixmap)
 
         # Update window title
-        selected_timestamp = self.combo_timestamp.currentText()
         real_frame = self.current_frames[self.current_idx]["frame_number"]
         self.setWindowTitle(
-            f"Cattle Tracklet Merge Assistant - [{selected_timestamp}]"
+            f"Cattle Tracklet Merge Assistant - [{self._session_name}]"
             f" - Frame: {real_frame} ({self.current_idx}/{self.time_slider.maximum()})"
         )
 
     # ---Data loading---
-    def select_folder(self):
-        folder_path = QFileDialog.getExistingDirectory(self, "Open")
+    def set_image_root(self):
+        start_dir = str(self._image_root_dir) if self._image_root_dir else ""
+        folder = QFileDialog.getExistingDirectory(
+            self, "Select Image Root Folder (e.g. image_all)", start_dir
+        )
+        if folder:
+            self._image_root_dir = Path(folder)
+            self.btn_set_img_root.setText("Image Folder")
+            self.update_camera_dropdown()
 
-        if folder_path:
-            self.base_folder_path = Path(folder_path)
-            self.temp_json_dir = self.base_folder_path / "temp_json_extracted"
+    def set_json_root(self):
+        start_dir = str(self._json_root_dir) if self._json_root_dir else ""
+        folder = QFileDialog.getExistingDirectory(
+            self, "Select JSON Root Folder (e.g. json)", start_dir
+        )
+        if folder:
+            self._json_root_dir = Path(folder)
+            self.btn_set_json_root.setText("JSON Folder")
+            self.update_camera_dropdown()
 
-            # extract JSON from zip
-            zip_files = list(self.base_folder_path.glob("*json.zip"))
-            if zip_files and (
-                not self.temp_json_dir.exists() or not any(self.temp_json_dir.iterdir())
-            ):
-                with zipfile.ZipFile(zip_files[0], "r") as zip_ref:
-                    zip_ref.extractall(self.temp_json_dir)
-
-            frames_dir = self.base_folder_path / "frames"
-            if not frames_dir.exists():
-                return
-
-            sequence_folders = sorted(
-                [d.name for d in frames_dir.iterdir() if d.is_dir()]
+    def update_camera_dropdown(self):
+        self.combo_camera.blockSignals(True)
+        self.combo_camera.clear()
+        if self._image_root_dir and self._image_root_dir.exists():
+            cams = sorted(
+                [d.name for d in self._image_root_dir.iterdir() if d.is_dir()]
             )
+            self.combo_camera.addItems(cams)
+        self.combo_camera.blockSignals(False)
+        if self.combo_camera.count() > 0:
+            self.combo_camera.setCurrentIndex(0)
+            self.camera_changed()
 
-            self.combo_timestamp.blockSignals(True)
-            self.combo_timestamp.clear()
-            self.combo_timestamp.addItems(sequence_folders)
-            self.combo_timestamp.blockSignals(False)
+    def camera_changed(self, index=0):
+        self.combo_session.blockSignals(True)
+        self.combo_session.clear()
+        cam_id = self.combo_camera.currentText()
+        if cam_id and self._image_root_dir:
+            cam_dir = self._image_root_dir / cam_id
+            if cam_dir.exists():
+                sessions = sorted([d.name for d in cam_dir.iterdir() if d.is_dir()])
+                self.combo_session.addItems(sessions)
+        self.combo_session.blockSignals(False)
+        if self.combo_session.count() > 0:
+            self.combo_session.setCurrentIndex(0)
+            self.session_changed()
 
-            if sequence_folders:
-                self.combo_timestamp.setCurrentIndex(0)  # default to first timestamp
-                self.timestamp_changed(0)
-
-    def timestamp_changed(self, index):
-        selected_timestamp = self.combo_timestamp.currentText()
-        if not selected_timestamp or not self.base_folder_path:
+    def session_changed(self, index=0):
+        cam_id = self.combo_camera.currentText()
+        session_id = self.combo_session.currentText()
+        if (
+            not cam_id
+            or not session_id
+            or not self._image_root_dir
+            or not self._json_root_dir
+        ):
+            self.lbl_session_info.setText("")
             return
 
-        seq_path = self.base_folder_path / "frames" / selected_timestamp
+        img_dir = self._image_root_dir / cam_id / session_id
 
-        # Load corresponding JSON paths
-        json_files = []
-        if self.temp_json_dir and self.temp_json_dir.exists():
-            json_files = list(self.temp_json_dir.rglob(f"*{selected_timestamp}*.json"))
+        # Find matching json camera dir (e.g. 128camera_json matches 128)
+        json_cam_dir = None
+        for d in self._json_root_dir.iterdir():
+            if d.is_dir():
+                if (
+                    d.name == cam_id
+                    or d.name == f"{cam_id}camera_json"
+                    or d.name == f"{cam_id}camera"
+                ):
+                    json_cam_dir = d
+                    break
 
-        json_dict = {}
-        for j in json_files:
-            match = re.search(r"frame_(\d+)", j.stem)
-            if match:
-                json_dict[int(match.group(1))] = str(j)
+        if not json_cam_dir:
+            self.lbl_session_info.setText(
+                f"JSON folder for camera {cam_id} not found! Check naming."
+            )
+            return
 
-        # Pair with images
+        json_dir = json_cam_dir / session_id
+        if not json_dir.exists():
+            self.lbl_session_info.setText(
+                f"JSON session folder missing: {json_dir.name}"
+            )
+            # We still load the images, but with no JSONs
+            self._load_session(img_dir, json_dir, {})
+            return
+
+        # Parse anomalies.json here, where json_cam_dir and session_id are in scope
+        anomalies: dict = {}
+        anomaly_path = self._json_root_dir / "anomalies.json"
+        if anomaly_path.exists():
+            try:
+                with open(anomaly_path, "r", encoding="utf-8") as f:
+                    anomaly_data = json.load(f)
+                cam_entry = anomaly_data.get("cameras", {}).get(json_cam_dir.name, {})
+                session_entries = cam_entry.get(session_id, {}).get("anomalies", [])
+                for a in session_entries:
+                    frame = a.get("frame")
+                    if frame is not None:
+                        atype = a.get("type", "UNKNOWN")
+                        desc = a.get("description", "")
+                        anomalies[frame] = f"\u26a0\ufe0f {atype}: {desc}"
+            except Exception as e:
+                print(f"Error parsing anomalies.json: {e}")
+
+        self._load_session(img_dir, json_dir, anomalies)
+
+    def _load_session(self, img_dir: Path, json_dir: Path, anomalies: dict = None):
+        """Pair image and JSON files by frame number, then load the first frame."""
+        self.json_session_dir = json_dir
+        self._session_name = img_dir.name
+        self.current_anomalies = anomalies or {}
+
+        # Build JSON index: {frame_no: json_path_str}
+        json_dict: dict = {}
+        for json_path in json_dir.glob("*.json"):
+            m = re.search(r"frame_(\d+)", json_path.stem)
+            if m:
+                json_dict[int(m.group(1))] = str(json_path)
+
+        # Pair every JPG with its JSON (empty string if no annotation yet)
         self.current_frames = []
-        img_paths = sorted(seq_path.glob("*.jpg"))
-        for jpg_path in img_paths:
-            match = re.search(r"frame_(\d+)", jpg_path.stem)
-            if match:
-                frame_no = int(match.group(1))
+        for jpg_path in sorted(img_dir.glob("*.jpg")):
+            m = re.search(r"frame_(\d+)", jpg_path.stem)
+            if m:
+                frame_no = int(m.group(1))
                 self.current_frames.append(
                     {
                         "image_path": str(jpg_path),
@@ -578,13 +791,26 @@ class CowTrackerApp(QMainWindow):
                     }
                 )
 
-        total_frames = len(self.current_frames)
-        if total_frames > 0:
-            max_frame = max(f["frame_number"] for f in self.current_frames)
-            self.int_validator.setTop(max_frame)
-            self.time_slider.setMaximum(total_frames - 1)
-            self.time_slider.setValue(0)
-            self.slider_changed(0)
+        self.current_frames.sort(key=lambda x: x["frame_number"])
+
+        total = len(self.current_frames)
+        if total == 0:
+            self.lbl_session_info.setText("No frames found in the selected folder.")
+            return
+
+        max_frame = max(f["frame_number"] for f in self.current_frames)
+        self.int_validator.setTop(max_frame)
+        self.time_slider.setMaximum(total - 1)
+
+        # Mark anomalies on the slider
+        anomaly_indices = []
+        for i, frame_data in enumerate(self.current_frames):
+            if frame_data["frame_number"] in self.current_anomalies:
+                anomaly_indices.append(i)
+        self.time_slider.set_anomalies(anomaly_indices)
+
+        self.time_slider.setValue(0)
+        self.slider_changed(0)
 
     def _parse_cow_json(self, json_path):
         cow_boxes = []
@@ -617,6 +843,12 @@ class CowTrackerApp(QMainWindow):
         real_frame = frame_data["frame_number"]
         self.lbl_frame.setText(f"Frame: {real_frame}")
 
+        # Show anomaly info if present
+        if real_frame in self.current_anomalies:
+            self.lbl_anomaly_info.setText(self.current_anomalies[real_frame])
+        else:
+            self.lbl_anomaly_info.setText("")
+
         if os.path.exists(img_path):
             self.original_pixmap = QPixmap(img_path)
 
@@ -632,6 +864,7 @@ class CowTrackerApp(QMainWindow):
             self.drag_happened = False
             self.lbl_tool_status.setText("")
 
+            self._update_strip_header()
             self._render_frame()
 
     def jump_to_frame(self):
@@ -646,7 +879,174 @@ class CowTrackerApp(QMainWindow):
             if frame_data["frame_number"] == target_frame:
                 self.time_slider.setValue(idx)
                 self.input_frame.clear()
+            self.input_frame.clearFocus()
+
+    def jump_to_next_issue(self):
+        if not self.current_frames or not self.current_anomalies:
+            self.lbl_anomaly_info.setText("✅ No issues found in this session.")
+            return
+
+        current_idx = self.time_slider.value()
+
+        # Find the next index that has an anomaly
+        for i in range(current_idx + 1, len(self.current_frames)):
+            frame_no = self.current_frames[i]["frame_number"]
+            if frame_no in self.current_anomalies:
+                self.time_slider.setValue(i)
                 return
+
+        # If we reached the end, check if we want to wrap around or just show a message
+        self.lbl_anomaly_info.setText("✅ You've reached the last issue.")
+
+    # ---Strip Viewer UI Helpers---
+    def _init_strip_placeholders(self):
+        offsets = [-3, -2, -1, 0, 1, 2, 3]
+        for offset in offsets:
+            card = QFrame()
+            card.setFixedSize(110, 72)
+            card.setStyleSheet(
+                "QFrame { background-color: #2b2b36; border: 1px solid #3d3d4d; border-radius: 4px; }"
+            )
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(4, 2, 4, 2)
+            card_layout.setSpacing(2)
+
+            offset_text = "Current" if offset == 0 else f"{offset:+d}f"
+            lbl_offset = QLabel(offset_text)
+            lbl_offset.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl_offset.setStyleSheet(
+                "color: #00d084; font-size: 10px; font-weight: bold;"
+                if offset == 0
+                else "color: #8a8a9e; font-size: 10px; font-weight: bold;"
+            )
+            card_layout.addWidget(lbl_offset)
+
+            lbl_img = QLabel("No Data")
+            lbl_img.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl_img.setStyleSheet("color: #555566; font-size: 11px;")
+            card_layout.addWidget(lbl_img, stretch=1)
+
+            if offset != 0:
+                card.setCursor(Qt.CursorShape.PointingHandCursor)
+
+                def make_click_handler(o):
+                    def handler(event):
+                        if event.button() == Qt.MouseButton.LeftButton:
+                            self._jump_to_offset(o)
+                    return handler
+
+                card.mousePressEvent = make_click_handler(offset)
+
+            self.strip_layout.addWidget(card)
+            self.strip_card_widgets.append(
+                {
+                    "container": card,
+                    "offset_lbl": lbl_offset,
+                    "img_lbl": lbl_img,
+                    "offset": offset,
+                }
+            )
+
+        self.strip_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    def _jump_to_offset(self, offset: int):
+        """Jump the time slider by `offset` steps relative to the current frame."""
+        target = self.current_idx + offset
+        target = max(0, min(target, len(self.current_frames) - 1))
+        self.time_slider.setValue(target)
+
+    def _update_strip_header(self):
+        if 0 <= self.selected_cow_idx < len(self.cow_boxes):
+            cow_id = self.cow_boxes[self.selected_cow_idx]["id"]
+            self.lbl_strip_header.setText(f"Coat Pattern Viewer — Cow ID: {cow_id}")
+            self.lbl_strip_header.setStyleSheet(
+                "color: #00d084; font-size: 12px; font-weight: bold;"
+            )
+        else:
+            self.lbl_strip_header.setText(
+                "Coat Pattern Viewer — Select a cow box to inspect sequence"
+            )
+            self.lbl_strip_header.setStyleSheet(
+                "color: #b0b0ba; font-size: 12px; font-weight: bold;"
+            )
+
+        self._update_strip_viewer_content()
+
+    def _update_strip_viewer_content(self):
+        offsets = [-3, -2, -1, 0, 1, 2, 3]
+
+        if not (0 <= self.selected_cow_idx < len(self.cow_boxes)):
+            for idx, offset in enumerate(offsets):
+                card = self.strip_card_widgets[idx]
+                card["img_lbl"].setPixmap(QPixmap())
+                card["img_lbl"].setText("No Data")
+                card["img_lbl"].setStyleSheet("color: #555566; font-size: 11px;")
+                card["container"].setStyleSheet(
+                    "QFrame { background-color: #2b2b36; border: 1px solid #3d3d4d; border-radius: 4px; }"
+                )
+            return
+
+        target_cow_id = str(self.cow_boxes[self.selected_cow_idx]["id"])
+
+        for idx, offset in enumerate(offsets):
+            card = self.strip_card_widgets[idx]
+            target_frame_idx = self.current_idx + offset
+
+            border_color = "#00d084" if offset == 0 else "#3d3d4d"
+            card["container"].setStyleSheet(
+                f"QFrame {{ background-color: #2b2b36; border: 1px solid {border_color}; border-radius: 4px; }}"
+            )
+
+            if not (0 <= target_frame_idx < len(self.current_frames)):
+                card["img_lbl"].setPixmap(QPixmap())
+                card["img_lbl"].setText("—")
+                card["img_lbl"].setStyleSheet("color: #555566; font-size: 11px;")
+                continue
+
+            frame_data = self.current_frames[target_frame_idx]
+            img_path = frame_data["image_path"]
+            json_path = frame_data["json_path"]
+
+            if offset == 0:
+                matching_box = next(
+                    (b for b in self.cow_boxes if str(b["id"]) == target_cow_id), None
+                )
+            else:
+                boxes = (
+                    self._parse_cow_json(json_path)
+                    if json_path and os.path.exists(json_path)
+                    else []
+                )
+                matching_box = next(
+                    (b for b in boxes if str(b["id"]) == target_cow_id), None
+                )
+
+            if matching_box and os.path.exists(img_path):
+                target_pixmap = (
+                    self.original_pixmap
+                    if (offset == 0 and self.original_pixmap)
+                    else QPixmap(img_path)
+                )
+                crop = utils.crop_and_derotate_bbox(
+                    target_pixmap, matching_box["points"]
+                )
+                if crop and not crop.isNull():
+                    scaled_crop = crop.scaled(
+                        90,
+                        48,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                    card["img_lbl"].setPixmap(scaled_crop)
+                    card["img_lbl"].setText("")
+                else:
+                    card["img_lbl"].setPixmap(QPixmap())
+                    card["img_lbl"].setText("Invalid")
+                    card["img_lbl"].setStyleSheet("color: #aa5555; font-size: 11px;")
+            else:
+                card["img_lbl"].setPixmap(QPixmap())
+                card["img_lbl"].setText("Missing")
+                card["img_lbl"].setStyleSheet("color: #aa7744; font-size: 11px;")
 
 
 if __name__ == "__main__":
