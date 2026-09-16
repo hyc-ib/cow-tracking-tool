@@ -24,7 +24,7 @@ flowchart TD
     subgraph Layer2 ["2. Anomaly Detection Engine (anomaly_detector.py)"]
         R1["Rule 1: ID Swap<br/>(Centroid dist < 60 px)"]:::core
         R2["Rule 2: Unrealistic Jump<br/>(Velocity > 300 px/s)"]:::core
-        R4["Rule 4: Geometric Deformation<br/>(Δθ > 45° or ΔArea > 50%)"]:::core
+        R4["Rule 3: Geometric Deformation<br/>(Δθ > 45° or ΔArea > 50%)"]:::core
         AnomalyJSON["anomalies.json<br/>(Structured Issue Catalog)"]:::storage
 
         RawJSON --> R1 & R2 & R4
