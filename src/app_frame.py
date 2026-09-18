@@ -233,15 +233,17 @@ class CowTrackerApp(QMainWindow):
         top_bar.addWidget(self.lbl_tool_status)
 
         top_bar.addStretch()
+        main_layout.addLayout(top_bar)
 
-        # Anomaly status label on the right
+        # Anomaly info bar — full-width row below top bar
+        anomaly_bar = QHBoxLayout()
+        anomaly_bar.setContentsMargins(4, 0, 4, 2)
         self.lbl_anomaly_info = QLabel("")
         self.lbl_anomaly_info.setStyleSheet(
-            "font-size: 13px; color: #d00000; font-weight: bold;"
+            "font-size: 12px; color: #d00000; font-weight: bold;"
         )
-        top_bar.addWidget(self.lbl_anomaly_info)
-
-        main_layout.addLayout(top_bar)
+        anomaly_bar.addWidget(self.lbl_anomaly_info, stretch=1)
+        main_layout.addLayout(anomaly_bar)
 
         # Image display area
         self.image_label = ClickableLabel("Please Select Folder First")
@@ -758,7 +760,10 @@ class CowTrackerApp(QMainWindow):
                     if frame is not None:
                         atype = a.get("type", "UNKNOWN")
                         desc = a.get("description", "")
-                        anomalies[frame] = f"\u26a0\ufe0f {atype}: {desc}"
+                        msg = f"\u26a0\ufe0f {atype}: {desc}"
+                        if frame not in anomalies:
+                            anomalies[frame] = []
+                        anomalies[frame].append(msg)
             except Exception as e:
                 print(f"Error parsing anomalies.json: {e}")
 
@@ -812,6 +817,15 @@ class CowTrackerApp(QMainWindow):
         self.time_slider.setValue(0)
         self.slider_changed(0)
 
+        # Update session info with anomaly count
+        n_issues = len(self.current_anomalies)
+        if n_issues > 0:
+            self.lbl_session_info.setText(
+                f"{total} frames  \u00b7  \u26a0\ufe0f {n_issues} issue frames detected"
+            )
+        else:
+            self.lbl_session_info.setText(f"{total} frames  \u00b7  \u2705 No issues")
+
     def _parse_cow_json(self, json_path):
         cow_boxes = []
         try:
@@ -843,9 +857,10 @@ class CowTrackerApp(QMainWindow):
         real_frame = frame_data["frame_number"]
         self.lbl_frame.setText(f"Frame: {real_frame}")
 
-        # Show anomaly info if present
+        # Show anomaly info if present (join multiple anomalies on same frame)
         if real_frame in self.current_anomalies:
-            self.lbl_anomaly_info.setText(self.current_anomalies[real_frame])
+            msgs = self.current_anomalies[real_frame]
+            self.lbl_anomaly_info.setText("  \u2502  ".join(msgs))
         else:
             self.lbl_anomaly_info.setText("")
 
